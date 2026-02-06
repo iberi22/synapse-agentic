@@ -231,13 +231,31 @@ impl RedactionResult {
 #[derive(Debug, Clone)]
 pub enum ValidationError {
     /// JSON is malformed
-    MalformedJSON { message: String, position: Option<usize> },
+    MalformedJSON {
+        /// Error message describing the issue.
+        message: String,
+        /// Position where the error occurred, if known.
+        position: Option<usize>
+    },
     /// Content exceeds size limits
-    SizeExceeded { actual: usize, limit: usize },
+    SizeExceeded {
+        /// Actual content size in bytes.
+        actual: usize,
+        /// Maximum allowed size in bytes.
+        limit: usize
+    },
     /// Content contains blocked patterns
-    BlockedContent { reason: String },
+    BlockedContent {
+        /// Reason for blocking.
+        reason: String
+    },
     /// Schema validation failed
-    SchemaViolation { path: String, message: String },
+    SchemaViolation {
+        /// JSON path to the failing field.
+        path: String,
+        /// Validation error message.
+        message: String
+    },
 }
 
 impl std::fmt::Display for ValidationError {

@@ -93,6 +93,7 @@ pub struct PromptSkill {
 
 impl PromptSkill {
     /// Creates a new prompt-based skill.
+    #[allow(dead_code)]
     pub fn new(
         name: impl Into<String>,
         description: impl Into<String>,

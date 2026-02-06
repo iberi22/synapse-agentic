@@ -226,7 +226,10 @@ pub enum FailoverStrategy {
 pub enum FailoverError {
     /// All providers are in cooldown
     #[error("all providers exhausted: {message}")]
-    AllProvidersExhausted { message: String },
+    AllProvidersExhausted {
+        /// Error message describing the exhaustion.
+        message: String
+    },
 
     /// No providers configured
     #[error("no providers configured")]
@@ -234,7 +237,12 @@ pub enum FailoverError {
 
     /// Provider-specific error
     #[error("provider '{provider}' error: {message}")]
-    ProviderError { provider: String, message: String },
+    ProviderError {
+        /// Name of the failed provider.
+        provider: String,
+        /// Error message.
+        message: String
+    },
 
     /// Configuration error
     #[error("configuration error: {0}")]

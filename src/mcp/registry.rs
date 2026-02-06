@@ -51,6 +51,8 @@ impl Default for McpRegistry {
 }
 
 impl McpRegistry {
+    /// Creates a new empty registry.
+    #[allow(dead_code)]
     pub fn new() -> Self {
         Self {
             tools: RwLock::new(HashMap::new()),
@@ -215,6 +217,11 @@ impl McpRegistry {
         self.prompts.write().await.insert(name, Arc::from(prompt));
     }
 
+    /// Lists all registered prompts.
+    ///
+    /// # Returns
+    ///
+    /// A vector of prompt information.
     pub async fn list_prompts(&self) -> Vec<PromptInfo> {
         self.prompts
             .read()
@@ -228,6 +235,16 @@ impl McpRegistry {
             .collect()
     }
 
+    /// Retrieves and renders a prompt with arguments.
+    ///
+    /// # Arguments
+    ///
+    /// * `name` - The name of the prompt.
+    /// * `arguments` - Key-value arguments for the prompt.
+    ///
+    /// # Returns
+    ///
+    /// The rendered prompt result.
     pub async fn get_prompt(
         &self,
         name: &str,
@@ -255,7 +272,8 @@ impl McpRegistry {
     }
 }
 
-// Backward compatibility alias
+/// Backward compatibility type alias for McpRegistry.
+#[allow(dead_code)]
 pub type ToolRegistry = McpRegistry;
 
 impl ToolRegistry {
