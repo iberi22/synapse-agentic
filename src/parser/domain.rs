@@ -25,12 +25,19 @@ pub enum OutputFormat {
 /// Code language for code extraction.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub enum CodeLanguage {
+    /// Rust programming language
     Rust,
+    /// Python programming language
     Python,
+    /// JavaScript programming language
     JavaScript,
+    /// TypeScript programming language
     TypeScript,
+    /// SQL queries
     SQL,
+    /// Shell/Bash scripts
     Shell,
+    /// Other unspecified language
     Other,
 }
 

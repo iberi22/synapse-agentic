@@ -99,13 +99,29 @@ pub struct GuardedResult {
 #[derive(Debug, Clone)]
 pub enum Modification {
     /// PII was redacted
-    PIIRedacted { count: usize, types: Vec<String> },
+    PIIRedacted {
+        /// Number of PII instances found.
+        count: usize,
+        /// Types of PII that were redacted.
+        types: Vec<String>
+    },
     /// JSON was repaired
-    JSONRepaired { issue: String },
+    JSONRepaired {
+        /// Description of the issue that was repaired.
+        issue: String
+    },
     /// Content was truncated
-    Truncated { original_len: usize, new_len: usize },
+    Truncated {
+        /// Original content length in bytes.
+        original_len: usize,
+        /// New content length after truncation.
+        new_len: usize
+    },
     /// Blocked patterns removed
-    PatternsRemoved { count: usize },
+    PatternsRemoved {
+        /// Number of patterns that were removed.
+        count: usize
+    },
 }
 
 impl GuardedResult {

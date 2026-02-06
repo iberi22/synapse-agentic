@@ -34,10 +34,15 @@ pub enum RoutingStrategy {
 /// Log entry for sent messages.
 #[derive(Debug, Clone)]
 pub struct MessageLogEntry {
+    /// Unique identifier for the message.
     pub message_id: MessageId,
+    /// Channel through which the message was sent.
     pub channel: Channel,
+    /// Timestamp when the message was sent.
     pub timestamp: chrono::DateTime<chrono::Utc>,
+    /// Delivery status of the message.
     pub status: DeliveryStatus,
+    /// External identifier from the channel provider, if available.
     pub external_id: Option<String>,
 }
 
