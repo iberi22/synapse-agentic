@@ -229,7 +229,7 @@ pub struct ParsedOutput {
 impl ParsedOutput {
     /// Creates a clean output (no repairs needed).
     pub fn clean(content: String, format: OutputFormat) -> Self {
-        use sha2::{Sha256, Digest};
+        use sha2::{Digest, Sha256};
         let hash = format!("{:x}", Sha256::digest(content.as_bytes()));
         Self {
             content,
@@ -243,7 +243,7 @@ impl ParsedOutput {
 
     /// Creates a repaired output.
     pub fn repaired(content: String, format: OutputFormat, repairs: Vec<RepairAction>) -> Self {
-        use sha2::{Sha256, Digest};
+        use sha2::{Digest, Sha256};
         let hash = format!("{:x}", Sha256::digest(content.as_bytes()));
         let confidence = Self::calculate_confidence(&repairs);
         Self {
@@ -262,15 +262,16 @@ impl ParsedOutput {
             return 1.0;
         }
 
-        let penalty: f64 = repairs.iter().map(|r| {
-            match r.severity {
+        let penalty: f64 = repairs
+            .iter()
+            .map(|r| match r.severity {
                 RepairSeverity::Cosmetic => 0.01,
                 RepairSeverity::Minor => 0.05,
                 RepairSeverity::Moderate => 0.15,
                 RepairSeverity::Major => 0.30,
                 RepairSeverity::Reconstructed => 0.50,
-            }
-        }).sum();
+            })
+            .sum();
 
         (1.0 - penalty).max(0.1)
     }
@@ -298,7 +299,11 @@ pub struct SanitizationRule {
 
 impl SanitizationRule {
     /// Creates a new rule.
-    pub fn new(name: impl Into<String>, pattern: impl Into<String>, replacement: impl Into<String>) -> Self {
+    pub fn new(
+        name: impl Into<String>,
+        pattern: impl Into<String>,
+        replacement: impl Into<String>,
+    ) -> Self {
         Self {
             name: name.into(),
             enabled: true,
@@ -345,9 +350,7 @@ mod tests {
 
     #[test]
     fn test_confidence_calculation() {
-        let repairs_minor = vec![
-            RepairAction::new(RepairType::TrailingComma, "fixed comma"),
-        ];
+        let repairs_minor = vec![RepairAction::new(RepairType::TrailingComma, "fixed comma")];
         let output = ParsedOutput::repaired("{}".into(), OutputFormat::JSON, repairs_minor);
         assert!(output.confidence > 0.9);
 
@@ -363,7 +366,10 @@ mod tests {
     fn test_code_language_parsing() {
         assert_eq!(CodeLanguage::from_str("rust"), CodeLanguage::Rust);
         assert_eq!(CodeLanguage::from_str("py"), CodeLanguage::Python);
-        assert_eq!(CodeLanguage::from_str("JavaScript"), CodeLanguage::JavaScript);
+        assert_eq!(
+            CodeLanguage::from_str("JavaScript"),
+            CodeLanguage::JavaScript
+        );
         assert_eq!(CodeLanguage::from_str("unknown"), CodeLanguage::Other);
     }
 }

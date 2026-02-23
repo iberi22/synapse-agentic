@@ -9,12 +9,12 @@
 //! - [`DecisionContext`] - Context for decision requests
 //! - [`Skill`] - Reusable AI capabilities
 
-mod provider;
-mod engine;
 mod context;
+mod engine;
+mod provider;
 mod skill;
 
-pub use provider::{LLMProvider, RawLLMOutput};
-pub use engine::{DecisionEngine, EngineMode, Decision};
 pub use context::DecisionContext;
+pub use engine::{Decision, DecisionEngine, EngineMode};
+pub use provider::{GeminiProvider, LLMProvider, MinimaxProvider, RawLLMOutput};
 pub use skill::{Skill, SkillOutput};

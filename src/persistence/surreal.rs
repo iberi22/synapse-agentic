@@ -1,15 +1,14 @@
 //! SurrealDB Adapter - Multi-model database with graph capabilities.
 
+use anyhow::{Context, Result};
 use async_trait::async_trait;
 use surrealdb::engine::any::Any;
 use surrealdb::opt::auth::Root;
 use surrealdb::Surreal;
-use anyhow::{Result, Context};
 use tracing::{debug, info};
 
 use super::adapter::{
-    DatabaseAdapter, EntityId, Filter, GraphAdapter, Pagination,
-    QueryResult, Sort, VectorAdapter,
+    DatabaseAdapter, EntityId, Filter, GraphAdapter, Pagination, QueryResult, Sort, VectorAdapter,
 };
 
 /// SurrealDB adapter implementing all database traits.
@@ -26,7 +25,9 @@ impl SurrealAdapter {
     pub async fn memory() -> Result<Self> {
         info!("Connecting to SurrealDB (in-memory)");
         let db = Surreal::<Any>::init();
-        db.connect("mem://").await.context("Failed to connect to SurrealDB memory")?;
+        db.connect("mem://")
+            .await
+            .context("Failed to connect to SurrealDB memory")?;
         db.use_ns("synapse").use_db("enterprise").await?;
 
         Ok(Self {
@@ -40,7 +41,8 @@ impl SurrealAdapter {
     pub async fn file(path: &str) -> Result<Self> {
         info!(path, "Connecting to SurrealDB (file)");
         let db = Surreal::<Any>::init();
-        db.connect(format!("surrealkv://{}", path)).await
+        db.connect(format!("surrealkv://{}", path))
+            .await
             .context("Failed to connect to SurrealDB file")?;
         db.use_ns("synapse").use_db("enterprise").await?;
 
@@ -61,11 +63,17 @@ impl SurrealAdapter {
     ) -> Result<Self> {
         info!(url, namespace, database, "Connecting to SurrealDB (remote)");
         let db = Surreal::<Any>::init();
-        db.connect(url).await.context("Failed to connect to SurrealDB")?;
+        db.connect(url)
+            .await
+            .context("Failed to connect to SurrealDB")?;
 
         if let (Some(user), Some(pass)) = (username, password) {
-            db.signin(Root { username: user, password: pass }).await
-                .context("Failed to authenticate with SurrealDB")?;
+            db.signin(Root {
+                username: user.to_string(),
+                password: pass.to_string(),
+            })
+            .await
+            .context("Failed to authenticate with SurrealDB")?;
         }
 
         db.use_ns(namespace).use_db(database).await?;
@@ -121,10 +129,7 @@ impl DatabaseAdapter for SurrealAdapter {
     async fn create_raw(&self, table: &str, entity: serde_json::Value) -> Result<EntityId> {
         debug!(table, "Creating entity");
 
-        let created: Option<serde_json::Value> = self.db
-            .create(table)
-            .content(entity)
-            .await?;
+        let created: Option<serde_json::Value> = self.db.create(table).content(entity).await?;
 
         let id = created
             .and_then(|v| v.get("id").and_then(|i| i.as_str()).map(String::from))
@@ -133,7 +138,11 @@ impl DatabaseAdapter for SurrealAdapter {
         Ok(EntityId::new(id))
     }
 
-    async fn create_many_raw(&self, table: &str, entities: Vec<serde_json::Value>) -> Result<Vec<EntityId>> {
+    async fn create_many_raw(
+        &self,
+        table: &str,
+        entities: Vec<serde_json::Value>,
+    ) -> Result<Vec<EntityId>> {
         debug!(table, count = entities.len(), "Creating multiple entities");
 
         let mut ids = Vec::with_capacity(entities.len());
@@ -160,21 +169,22 @@ impl DatabaseAdapter for SurrealAdapter {
         Ok(results)
     }
 
-    async fn update_raw(&self, table: &str, id: &EntityId, entity: serde_json::Value) -> Result<()> {
+    async fn update_raw(
+        &self,
+        table: &str,
+        id: &EntityId,
+        entity: serde_json::Value,
+    ) -> Result<()> {
         debug!(table, id = %id.as_str(), "Updating entity");
-        let _: Option<serde_json::Value> = self.db
-            .update((table, id.as_str()))
-            .content(entity)
-            .await?;
+        let _: Option<serde_json::Value> =
+            self.db.update((table, id.as_str())).content(entity).await?;
         Ok(())
     }
 
     async fn patch_raw(&self, table: &str, id: &EntityId, patch: serde_json::Value) -> Result<()> {
         debug!(table, id = %id.as_str(), "Patching entity");
-        let _: Option<serde_json::Value> = self.db
-            .update((table, id.as_str()))
-            .merge(patch)
-            .await?;
+        let _: Option<serde_json::Value> =
+            self.db.update((table, id.as_str())).merge(patch).await?;
         Ok(())
     }
 
@@ -257,7 +267,7 @@ impl DatabaseAdapter for SurrealAdapter {
     async fn raw_query(&self, query: &str, params: serde_json::Value) -> Result<serde_json::Value> {
         debug!(query, "Executing raw query");
         let mut response = self.db.query(query).bind(params).await?;
-        let result: surrealdb::Value = response.take(0usize)?;
+        let result: Option<serde_json::Value> = response.take(0usize)?;
         let json = serde_json::to_value(&result)?;
         Ok(json)
     }
@@ -272,12 +282,7 @@ impl GraphAdapter for SurrealAdapter {
         to: &EntityId,
         _data: Option<serde_json::Value>,
     ) -> Result<EntityId> {
-        let query = format!(
-            "RELATE {}->{}->{}",
-            from.as_str(),
-            relation,
-            to.as_str(),
-        );
+        let query = format!("RELATE {}->{}->{}", from.as_str(), relation, to.as_str(),);
 
         debug!(query, "Creating relation");
 
@@ -286,7 +291,7 @@ impl GraphAdapter for SurrealAdapter {
 
         let id = result
             .and_then(|v| v.get("id").and_then(|i| i.as_str()).map(String::from))
-            .unwrap_or_else(|| format!("{}->{}->{}",from.as_str(), relation, to.as_str()));
+            .unwrap_or_else(|| format!("{}->{}->{}", from.as_str(), relation, to.as_str()));
 
         Ok(EntityId::new(id))
     }
@@ -308,7 +313,7 @@ impl GraphAdapter for SurrealAdapter {
         debug!(query, "Traversing graph");
 
         let mut response = self.db.query(&query).await?;
-        let result: surrealdb::Value = response.take(0usize)?;
+        let result: Option<serde_json::Value> = response.take(0usize)?;
         let json = serde_json::to_value(&result)?;
 
         Ok(json)
@@ -328,7 +333,8 @@ impl VectorAdapter for SurrealAdapter {
             "metadata": metadata
         });
 
-        let _: Option<serde_json::Value> = self.db
+        let _: Option<serde_json::Value> = self
+            .db
             .update(("embeddings", id.as_str()))
             .content(data)
             .await?;
@@ -353,7 +359,8 @@ impl VectorAdapter for SurrealAdapter {
         // Clone the embedding to avoid lifetime issues with the query
         let embedding_vec: Vec<f32> = embedding.to_vec();
 
-        let mut response = self.db
+        let mut response = self
+            .db
             .query(&query)
             .bind(("embedding", embedding_vec))
             .await?;
@@ -365,7 +372,10 @@ impl VectorAdapter for SurrealAdapter {
             .filter_map(|v| {
                 let id = v.get("id")?.as_str()?.to_string();
                 let score = v.get("score")?.as_f64()? as f32;
-                let metadata = v.get("metadata").cloned().unwrap_or(serde_json::Value::Null);
+                let metadata = v
+                    .get("metadata")
+                    .cloned()
+                    .unwrap_or(serde_json::Value::Null);
                 Some((EntityId::new(id), score, metadata))
             })
             .collect();
@@ -374,9 +384,8 @@ impl VectorAdapter for SurrealAdapter {
     }
 
     async fn delete_embedding(&self, id: &EntityId) -> Result<bool> {
-        let deleted: Option<serde_json::Value> = self.db
-            .delete(("embeddings", id.as_str()))
-            .await?;
+        let deleted: Option<serde_json::Value> =
+            self.db.delete(("embeddings", id.as_str())).await?;
         Ok(deleted.is_some())
     }
 }

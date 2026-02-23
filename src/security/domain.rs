@@ -235,38 +235,36 @@ pub enum ValidationError {
         /// Error message describing the issue.
         message: String,
         /// Position where the error occurred, if known.
-        position: Option<usize>
+        position: Option<usize>,
     },
     /// Content exceeds size limits
     SizeExceeded {
         /// Actual content size in bytes.
         actual: usize,
         /// Maximum allowed size in bytes.
-        limit: usize
+        limit: usize,
     },
     /// Content contains blocked patterns
     BlockedContent {
         /// Reason for blocking.
-        reason: String
+        reason: String,
     },
     /// Schema validation failed
     SchemaViolation {
         /// JSON path to the failing field.
         path: String,
         /// Validation error message.
-        message: String
+        message: String,
     },
 }
 
 impl std::fmt::Display for ValidationError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            ValidationError::MalformedJSON { message, position } => {
-                match position {
-                    Some(pos) => write!(f, "malformed JSON at position {}: {}", pos, message),
-                    None => write!(f, "malformed JSON: {}", message),
-                }
-            }
+            ValidationError::MalformedJSON { message, position } => match position {
+                Some(pos) => write!(f, "malformed JSON at position {}: {}", pos, message),
+                None => write!(f, "malformed JSON: {}", message),
+            },
             ValidationError::SizeExceeded { actual, limit } => {
                 write!(f, "content size {} exceeds limit {}", actual, limit)
             }
@@ -343,7 +341,9 @@ mod tests {
         let mut config = RedactionConfig::default();
         assert_eq!(config.placeholder(PIIType::Email), "[EMAIL_REDACTED]");
 
-        config.custom_placeholders.insert(PIIType::Email, "***".to_string());
+        config
+            .custom_placeholders
+            .insert(PIIType::Email, "***".to_string());
         assert_eq!(config.placeholder(PIIType::Email), "***");
     }
 
@@ -352,9 +352,24 @@ mod tests {
         let result = RedactionResult {
             text: "redacted".to_string(),
             redactions: vec![
-                Redaction { pii_type: PIIType::Email, start: 0, end: 10, placeholder: "X".into() },
-                Redaction { pii_type: PIIType::Email, start: 20, end: 30, placeholder: "X".into() },
-                Redaction { pii_type: PIIType::Phone, start: 40, end: 50, placeholder: "Y".into() },
+                Redaction {
+                    pii_type: PIIType::Email,
+                    start: 0,
+                    end: 10,
+                    placeholder: "X".into(),
+                },
+                Redaction {
+                    pii_type: PIIType::Email,
+                    start: 20,
+                    end: 30,
+                    placeholder: "X".into(),
+                },
+                Redaction {
+                    pii_type: PIIType::Phone,
+                    start: 40,
+                    end: 50,
+                    placeholder: "Y".into(),
+                },
             ],
             max_sensitivity: SensitivityLevel::Low,
             blocked: false,

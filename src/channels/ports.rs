@@ -1,8 +1,6 @@
 //! Ports Layer: Abstract interfaces for channel operations.
 
-use crate::channels::domain::{
-    Channel, ChannelMessage, ChannelStatus, DeliveryStatus, MessageId,
-};
+use crate::channels::domain::{Channel, ChannelMessage, ChannelStatus, DeliveryStatus, MessageId};
 use async_trait::async_trait;
 use std::time::Duration;
 use thiserror::Error;
@@ -202,7 +200,10 @@ mod tests {
         };
         assert!(err.to_string().contains("rate limited"));
 
-        let err = ChannelError::MessageTooLarge { size: 5000, max: 4000 };
+        let err = ChannelError::MessageTooLarge {
+            size: 5000,
+            max: 4000,
+        };
         assert!(err.to_string().contains("5000"));
     }
 }

@@ -1,7 +1,7 @@
 //! Memory abstractions for agent state persistence.
 
 use async_trait::async_trait;
-use serde::{Serialize, Deserialize};
+use serde::{Deserialize, Serialize};
 
 /// Represents a piece of information stored in memory.
 ///

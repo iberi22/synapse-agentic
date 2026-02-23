@@ -1,14 +1,14 @@
 //! Registry for managing MCP components (Tools, Resources, Prompts).
 
+use anyhow::Result;
+use serde_json::Value;
 use std::collections::HashMap;
 use std::sync::Arc;
 use tokio::sync::RwLock;
-use serde_json::Value;
-use anyhow::Result;
 
-use super::tool::{Tool, ToolContext};
-use super::resource::Resource;
 use super::prompt::Prompt;
+use super::resource::Resource;
+use super::tool::{Tool, ToolContext};
 
 /// Information about a registered tool.
 #[derive(Debug, Clone, serde::Serialize)]
@@ -38,10 +38,23 @@ pub struct PromptInfo {
 }
 
 /// Central registry for all MCP capabilities.
+#[derive(Clone)]
 pub struct McpRegistry {
+    inner: Arc<McpRegistryInner>,
+}
+
+struct McpRegistryInner {
     tools: RwLock<HashMap<String, Arc<dyn Tool>>>,
     resources: RwLock<HashMap<String, Arc<dyn Resource>>>,
     prompts: RwLock<HashMap<String, Arc<dyn Prompt>>>,
+}
+
+impl std::fmt::Debug for McpRegistry {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("McpRegistry")
+            .field("inner", &"McpRegistryInner")
+            .finish()
+    }
 }
 
 impl Default for McpRegistry {
@@ -55,9 +68,11 @@ impl McpRegistry {
     #[allow(dead_code)]
     pub fn new() -> Self {
         Self {
-            tools: RwLock::new(HashMap::new()),
-            resources: RwLock::new(HashMap::new()),
-            prompts: RwLock::new(HashMap::new()),
+            inner: Arc::new(McpRegistryInner {
+                tools: RwLock::new(HashMap::new()),
+                resources: RwLock::new(HashMap::new()),
+                prompts: RwLock::new(HashMap::new()),
+            }),
         }
     }
 
@@ -70,7 +85,7 @@ impl McpRegistry {
     /// * `tool` - The tool implementation to register.
     pub async fn register_tool(&self, tool: impl Tool + 'static) {
         let name = tool.name().to_string();
-        self.tools.write().await.insert(name, Arc::new(tool));
+        self.inner.tools.write().await.insert(name, Arc::new(tool));
     }
 
     /// Registers a boxed tool implementation.
@@ -80,12 +95,12 @@ impl McpRegistry {
     /// * `tool` - The boxed tool to register.
     pub async fn register_tool_boxed(&self, tool: Box<dyn Tool>) {
         let name = tool.name().to_string();
-        self.tools.write().await.insert(name, Arc::from(tool));
+        self.inner.tools.write().await.insert(name, Arc::from(tool));
     }
 
     /// Unregisters a tool by name.
     pub async fn unregister_tool(&self, name: &str) -> bool {
-        self.tools.write().await.remove(name).is_some()
+        self.inner.tools.write().await.remove(name).is_some()
     }
 
     /// Lists all registered tools with their metadata.
@@ -94,7 +109,7 @@ impl McpRegistry {
     ///
     /// Vector of [`ToolInfo`] containing tool names, descriptions, and schemas.
     pub async fn list_tools(&self) -> Vec<ToolInfo> {
-        self.tools
+        self.inner.tools
             .read()
             .await
             .values()
@@ -122,7 +137,7 @@ impl McpRegistry {
     ///
     /// Returns an error if the tool is not found or execution fails.
     pub async fn call_tool(&self, name: &str, ctx: &dyn ToolContext, args: Value) -> Result<Value> {
-        let tools = self.tools.read().await;
+        let tools = self.inner.tools.read().await;
         let tool = tools
             .get(name)
             .ok_or_else(|| anyhow::anyhow!("Tool not found: {}", name))?
@@ -140,7 +155,7 @@ impl McpRegistry {
     /// * `resource` - The resource to register.
     pub async fn register_resource(&self, resource: impl Resource + 'static) {
         let uri = resource.uri().to_string();
-        self.resources.write().await.insert(uri, Arc::new(resource));
+        self.inner.resources.write().await.insert(uri, Arc::new(resource));
     }
 
     /// Registers a boxed resource implementation.
@@ -150,7 +165,10 @@ impl McpRegistry {
     /// * `resource` - The boxed resource to register.
     pub async fn register_resource_boxed(&self, resource: Box<dyn Resource>) {
         let uri = resource.uri().to_string();
-        self.resources.write().await.insert(uri, Arc::from(resource));
+        self.inner.resources
+            .write()
+            .await
+            .insert(uri, Arc::from(resource));
     }
 
     /// Lists all registered resources.
@@ -159,7 +177,7 @@ impl McpRegistry {
     ///
     /// Vector of [`ResourceInfo`] containing resource metadata.
     pub async fn list_resources(&self) -> Vec<ResourceInfo> {
-        self.resources
+        self.inner.resources
             .read()
             .await
             .values()
@@ -186,7 +204,7 @@ impl McpRegistry {
     ///
     /// Returns an error if the resource is not found or read fails.
     pub async fn read_resource(&self, uri: &str) -> Result<String> {
-        let resources = self.resources.read().await;
+        let resources = self.inner.resources.read().await;
         let resource = resources
             .get(uri)
             .ok_or_else(|| anyhow::anyhow!("Resource not found: {}", uri))?
@@ -204,7 +222,7 @@ impl McpRegistry {
     /// * `prompt` - The prompt template to register.
     pub async fn register_prompt(&self, prompt: impl Prompt + 'static) {
         let name = prompt.name().to_string();
-        self.prompts.write().await.insert(name, Arc::new(prompt));
+        self.inner.prompts.write().await.insert(name, Arc::new(prompt));
     }
 
     /// Registers a boxed prompt implementation.
@@ -214,7 +232,7 @@ impl McpRegistry {
     /// * `prompt` - The boxed prompt to register.
     pub async fn register_prompt_boxed(&self, prompt: Box<dyn Prompt>) {
         let name = prompt.name().to_string();
-        self.prompts.write().await.insert(name, Arc::from(prompt));
+        self.inner.prompts.write().await.insert(name, Arc::from(prompt));
     }
 
     /// Lists all registered prompts.
@@ -223,7 +241,7 @@ impl McpRegistry {
     ///
     /// A vector of prompt information.
     pub async fn list_prompts(&self) -> Vec<PromptInfo> {
-        self.prompts
+        self.inner.prompts
             .read()
             .await
             .values()
@@ -250,7 +268,7 @@ impl McpRegistry {
         name: &str,
         arguments: HashMap<String, String>,
     ) -> Result<crate::mcp::prompt::GetPromptResult> {
-        let prompts = self.prompts.read().await;
+        let prompts = self.inner.prompts.read().await;
         let prompt = prompts
             .get(name)
             .ok_or_else(|| anyhow::anyhow!("Prompt not found: {}", name))?
@@ -263,12 +281,12 @@ impl McpRegistry {
 
     /// Returns true if a tool with the given name exists.
     pub async fn has_tool(&self, name: &str) -> bool {
-        self.tools.read().await.contains_key(name)
+        self.inner.tools.read().await.contains_key(name)
     }
 
     /// Returns the number of registered tools.
     pub async fn tool_count(&self) -> usize {
-        self.tools.read().await.len()
+        self.inner.tools.read().await.len()
     }
 }
 

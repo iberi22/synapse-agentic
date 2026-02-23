@@ -38,9 +38,8 @@ pub mod ports;
 pub mod adapters;
 
 // Re-exports for convenience
+pub use adapters::{InMemoryCooldownStore, StochasticRotator};
 pub use domain::{
-    ProviderId, ProviderHealth, CooldownState, CooldownReason,
-    FailoverStrategy, FailoverError,
+    CooldownReason, CooldownState, FailoverError, FailoverStrategy, ProviderHealth, ProviderId,
 };
 pub use ports::{ProviderRegistry, ResilientProvider};
-pub use adapters::{StochasticRotator, InMemoryCooldownStore};

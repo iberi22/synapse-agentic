@@ -76,13 +76,10 @@ impl SummarizationStrategy for LLMSummarizer {
             "Summarizing message chunk"
         );
 
-        let summary_text = self.provider
-            .generate(&prompt)
-            .await
-            .map_err(|e| {
-                warn!(error = %e, "LLM summarization failed");
-                CompactionError::SummarizationFailed(e.to_string())
-            })?;
+        let summary_text = self.provider.generate(&prompt).await.map_err(|e| {
+            warn!(error = %e, "LLM summarization failed");
+            CompactionError::SummarizationFailed(e.to_string())
+        })?;
 
         let replaced_ids = chunk.message_ids();
         let summary = Message::summary(summary_text, replaced_ids);

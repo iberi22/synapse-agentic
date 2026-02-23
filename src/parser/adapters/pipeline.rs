@@ -59,7 +59,11 @@ impl SelfHealingPipeline {
     }
 
     /// Process content through the pipeline.
-    fn process_content(&self, content: &str, expected: OutputFormat) -> (String, Vec<RepairAction>) {
+    fn process_content(
+        &self,
+        content: &str,
+        expected: OutputFormat,
+    ) -> (String, Vec<RepairAction>) {
         let mut result = content.to_string();
         let mut repairs = Vec::new();
 
@@ -73,7 +77,8 @@ impl SelfHealingPipeline {
         }
 
         // Step 2: Format-specific extraction
-        if self.enable_json && (expected == OutputFormat::JSON || expected == OutputFormat::Unknown) {
+        if self.enable_json && (expected == OutputFormat::JSON || expected == OutputFormat::Unknown)
+        {
             if let Some((extracted, json_repairs)) = self.json_extractor.extract(&result) {
                 result = extracted;
                 repairs.extend(json_repairs);
@@ -130,7 +135,8 @@ impl SelfHealer for SelfHealingPipeline {
         };
 
         let regex = Regex::new(&pattern).ok()?;
-        regex.captures(content)
+        regex
+            .captures(content)
             .and_then(|caps| caps.get(1))
             .map(|m| m.as_str().trim().to_string())
     }
@@ -185,7 +191,9 @@ impl SelfHealer for SelfHealingPipeline {
                 strategies.push(HealStrategy::JSONRepair);
                 confidence = 0.4;
             } else {
-                return HealabilityReport::unhealable(vec!["no JSON-like content found".to_string()]);
+                return HealabilityReport::unhealable(vec![
+                    "no JSON-like content found".to_string()
+                ]);
             }
         }
 
@@ -215,10 +223,13 @@ mod tests {
     #[test]
     fn test_pipeline_with_code_block() {
         let pipeline = SelfHealingPipeline::new();
-        let input = LLMOutput::new(r#"Here's the result:
+        let input = LLMOutput::new(
+            r#"Here's the result:
 ```json
 {"value": 42}
-```"#).with_format(OutputFormat::JSON);
+```"#,
+        )
+        .with_format(OutputFormat::JSON);
 
         let result = pipeline.heal(input);
         assert!(result.was_repaired);
@@ -229,8 +240,11 @@ mod tests {
     #[test]
     fn test_pipeline_with_thinking() {
         let pipeline = SelfHealingPipeline::new();
-        let input = LLMOutput::new(r#"<thinking>Let me think...</thinking>
-{"answer": "hello"}"#).with_format(OutputFormat::JSON);
+        let input = LLMOutput::new(
+            r#"<thinking>Let me think...</thinking>
+{"answer": "hello"}"#,
+        )
+        .with_format(OutputFormat::JSON);
 
         let result = pipeline.heal(input);
         assert!(result.was_repaired);
@@ -241,8 +255,8 @@ mod tests {
     #[test]
     fn test_pipeline_with_python_literals() {
         let pipeline = SelfHealingPipeline::new();
-        let input = LLMOutput::new(r#"{"active": True, "count": None}"#)
-            .with_format(OutputFormat::JSON);
+        let input =
+            LLMOutput::new(r#"{"active": True, "count": None}"#).with_format(OutputFormat::JSON);
 
         let result = pipeline.heal(input);
         assert!(result.was_repaired);

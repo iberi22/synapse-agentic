@@ -109,7 +109,8 @@ impl JsonExtractor {
 
         // Fix 3: Python literals
         let before = result.clone();
-        result = result.replace("None", "null")
+        result = result
+            .replace("None", "null")
             .replace("True", "true")
             .replace("False", "false");
         if result != before {
@@ -159,7 +160,9 @@ impl Default for JsonExtractor {
 impl OutputParser for JsonExtractor {
     fn parse(&self, input: &LLMOutput) -> ParsedOutput {
         match self.extract(&input.content) {
-            Some((content, repairs)) => ParsedOutput::repaired(content, OutputFormat::JSON, repairs),
+            Some((content, repairs)) => {
+                ParsedOutput::repaired(content, OutputFormat::JSON, repairs)
+            }
             None => ParsedOutput::clean(input.content.clone(), OutputFormat::Unknown),
         }
     }
@@ -197,7 +200,9 @@ That's all!"#;
         assert!(result.is_some());
         let (content, repairs) = result.unwrap();
         assert!(content.contains("status"));
-        assert!(repairs.iter().any(|r| r.repair_type == RepairType::CodeBlockExtraction));
+        assert!(repairs
+            .iter()
+            .any(|r| r.repair_type == RepairType::CodeBlockExtraction));
     }
 
     #[test]
@@ -208,7 +213,9 @@ That's all!"#;
         assert!(result.is_some());
         let (content, repairs) = result.unwrap();
         assert_eq!(content, r#"{"key": "value"}"#);
-        assert!(repairs.iter().any(|r| r.repair_type == RepairType::TrailingComma));
+        assert!(repairs
+            .iter()
+            .any(|r| r.repair_type == RepairType::TrailingComma));
     }
 
     #[test]
@@ -220,7 +227,9 @@ That's all!"#;
         let (content, repairs) = result.unwrap();
         assert!(content.contains("true"));
         assert!(content.contains("null"));
-        assert!(repairs.iter().any(|r| r.repair_type == RepairType::PythonLiteralConversion));
+        assert!(repairs
+            .iter()
+            .any(|r| r.repair_type == RepairType::PythonLiteralConversion));
     }
 
     #[test]

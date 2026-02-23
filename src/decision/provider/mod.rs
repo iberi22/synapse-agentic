@@ -1,7 +1,11 @@
-//! LLM Provider trait.
+pub mod gemini;
+pub mod minimax;
 
-use async_trait::async_trait;
+pub use gemini::GeminiProvider;
+pub use minimax::MinimaxProvider;
+
 use anyhow::Result;
+use async_trait::async_trait;
 use std::fmt::Debug;
 
 use super::context::DecisionContext;

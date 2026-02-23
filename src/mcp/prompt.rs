@@ -53,14 +53,14 @@ pub enum PromptMessageContent {
     /// Text content.
     Text {
         /// The text content.
-        text: String
+        text: String,
     },
     /// Image content.
     Image {
         /// Base64 encoded image data.
         data: String,
         /// MIME type of the image.
-        mime_type: String
+        mime_type: String,
     },
     // Resource { uri: String } - Future extension
 }

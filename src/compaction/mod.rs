@@ -39,9 +39,9 @@ pub mod ports;
 pub mod adapters;
 
 // Re-exports
+pub use adapters::{LLMSummarizer, SimpleTokenEstimator};
 pub use domain::{
-    Message, MessageRole, MessageChunk, SessionContext,
-    CompactionResult, CompactionConfig, ContextOverflowRisk,
+    CompactionConfig, CompactionResult, ContextOverflowRisk, Message, MessageChunk, MessageRole,
+    SessionContext,
 };
 pub use ports::{SummarizationStrategy, TokenCounter};
-pub use adapters::{SimpleTokenEstimator, LLMSummarizer};

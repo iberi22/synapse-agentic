@@ -103,31 +103,31 @@ pub enum Modification {
         /// Number of PII instances found.
         count: usize,
         /// Types of PII that were redacted.
-        types: Vec<String>
+        types: Vec<String>,
     },
     /// JSON was repaired
     JSONRepaired {
         /// Description of the issue that was repaired.
-        issue: String
+        issue: String,
     },
     /// Content was truncated
     Truncated {
         /// Original content length in bytes.
         original_len: usize,
         /// New content length after truncation.
-        new_len: usize
+        new_len: usize,
     },
     /// Blocked patterns removed
     PatternsRemoved {
         /// Number of patterns that were removed.
-        count: usize
+        count: usize,
     },
 }
 
 impl GuardedResult {
     /// Creates a clean pass-through result.
     pub fn clean(content: String) -> Self {
-        use sha2::{Sha256, Digest};
+        use sha2::{Digest, Sha256};
         let hash = format!("{:x}", Sha256::digest(content.as_bytes()));
         Self {
             content,
@@ -168,6 +168,9 @@ mod tests {
     fn test_guarded_result_blocked() {
         let result = GuardedResult::blocked("critical PII detected".to_string());
         assert!(result.blocked);
-        assert_eq!(result.block_reason, Some("critical PII detected".to_string()));
+        assert_eq!(
+            result.block_reason,
+            Some("critical PII detected".to_string())
+        );
     }
 }

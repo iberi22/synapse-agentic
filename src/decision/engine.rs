@@ -1,11 +1,11 @@
 //! Decision Engine - Multi-LLM orchestration.
 
-use std::sync::Arc;
 use anyhow::Result;
+use std::sync::Arc;
 use tracing::{info, warn};
 
-use super::provider::{LLMProvider, RawLLMOutput};
 use super::context::DecisionContext;
+use super::provider::{LLMProvider, RawLLMOutput};
 use super::skill::Skill;
 
 /// Operational mode of the DecisionEngine.
@@ -59,10 +59,22 @@ pub struct Decision {
 ///     println!("Decision: {} (confidence: {})", decision.action, decision.confidence);
 /// }
 /// ```
+/// Decision Engine that orchestrates multi-LLM decisions.
+#[derive(Clone)]
 pub struct DecisionEngine {
     providers: Vec<Arc<dyn LLMProvider>>,
-    skills: Vec<Box<dyn Skill>>,
+    skills: Vec<Arc<dyn Skill>>,
     mode: EngineMode,
+}
+
+impl std::fmt::Debug for DecisionEngine {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("DecisionEngine")
+            .field("providers", &self.providers.iter().map(|p| p.name()).collect::<Vec<_>>())
+            .field("skills", &self.skills.iter().map(|s| s.name()).collect::<Vec<_>>())
+            .field("mode", &self.mode)
+            .finish()
+    }
 }
 
 impl Default for DecisionEngine {
@@ -94,7 +106,7 @@ impl DecisionEngine {
 
     /// Adds a skill to the engine.
     pub fn add_skill(&mut self, skill: impl Skill + 'static) {
-        self.skills.push(Box::new(skill));
+        self.skills.push(Arc::new(skill));
     }
 
     /// Returns the current engine mode.
@@ -155,7 +167,10 @@ impl DecisionEngine {
     }
 
     async fn decide_consensus(&self, context: &DecisionContext) -> Result<Decision> {
-        info!(providers = self.providers.len(), "Using multi-LLM consensus");
+        info!(
+            providers = self.providers.len(),
+            "Using multi-LLM consensus"
+        );
 
         let mut outputs: Vec<(String, RawLLMOutput)> = Vec::new();
 
@@ -176,15 +191,21 @@ impl DecisionEngine {
         }
 
         // Simple voting: extract actions and count
-        let actions: Vec<String> = outputs.iter().map(|(_, o)| extract_action(&o.text)).collect();
+        let actions: Vec<String> = outputs
+            .iter()
+            .map(|(_, o)| extract_action(&o.text))
+            .collect();
         let most_common = mode_string(&actions);
 
-        let confidence = outputs.iter()
+        let confidence = outputs
+            .iter()
             .filter_map(|(_, o)| o.confidence)
-            .sum::<f64>() / outputs.len() as f64;
+            .sum::<f64>()
+            / outputs.len() as f64;
 
         let providers_used: Vec<String> = outputs.iter().map(|(n, _)| n.clone()).collect();
-        let reasoning = outputs.iter()
+        let reasoning = outputs
+            .iter()
             .map(|(n, o)| format!("[{}]: {}", n, o.text.chars().take(200).collect::<String>()))
             .collect::<Vec<_>>()
             .join("\n");
@@ -203,7 +224,7 @@ impl DecisionEngine {
 /// Builder for DecisionEngine.
 pub struct DecisionEngineBuilder {
     providers: Vec<Arc<dyn LLMProvider>>,
-    skills: Vec<Box<dyn Skill>>,
+    skills: Vec<Arc<dyn Skill>>,
 }
 
 impl DecisionEngineBuilder {
@@ -223,7 +244,7 @@ impl DecisionEngineBuilder {
 
     /// Adds a skill.
     pub fn with_skill(mut self, skill: impl Skill + 'static) -> Self {
-        self.skills.push(Box::new(skill));
+        self.skills.push(Arc::new(skill));
         self
     }
 
@@ -252,12 +273,24 @@ impl Default for DecisionEngineBuilder {
 // Helper to extract an action keyword from LLM output
 fn extract_action(text: &str) -> String {
     let upper = text.to_uppercase();
-    if upper.contains("APPROVE") { return "APPROVE".to_string(); }
-    if upper.contains("REJECT") { return "REJECT".to_string(); }
-    if upper.contains("YES") { return "YES".to_string(); }
-    if upper.contains("NO") { return "NO".to_string(); }
-    if upper.contains("PROCEED") { return "PROCEED".to_string(); }
-    if upper.contains("WAIT") { return "WAIT".to_string(); }
+    if upper.contains("APPROVE") {
+        return "APPROVE".to_string();
+    }
+    if upper.contains("REJECT") {
+        return "REJECT".to_string();
+    }
+    if upper.contains("YES") {
+        return "YES".to_string();
+    }
+    if upper.contains("NO") {
+        return "NO".to_string();
+    }
+    if upper.contains("PROCEED") {
+        return "PROCEED".to_string();
+    }
+    if upper.contains("WAIT") {
+        return "WAIT".to_string();
+    }
     "UNKNOWN".to_string()
 }
 
@@ -268,7 +301,8 @@ fn mode_string(items: &[String]) -> String {
     for item in items {
         *counts.entry(item.as_str()).or_insert(0) += 1;
     }
-    counts.into_iter()
+    counts
+        .into_iter()
         .max_by_key(|(_, c)| *c)
         .map(|(s, _)| s.to_string())
         .unwrap_or_else(|| "UNKNOWN".to_string())

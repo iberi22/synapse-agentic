@@ -54,13 +54,17 @@ impl SlackAdapter {
     }
 
     fn base_url(&self) -> &str {
-        self.config.base_url.as_deref().unwrap_or("https://slack.com/api")
+        self.config
+            .base_url
+            .as_deref()
+            .unwrap_or("https://slack.com/api")
     }
 
     fn token(&self) -> Result<&str, ChannelError> {
-        self.config.token.as_deref().ok_or_else(|| {
-            ChannelError::AuthenticationFailed("no token configured".to_string())
-        })
+        self.config
+            .token
+            .as_deref()
+            .ok_or_else(|| ChannelError::AuthenticationFailed("no token configured".to_string()))
     }
 
     /// Formats message for Slack API.
@@ -116,14 +120,17 @@ impl ChannelAdapter for SlackAdapter {
 
         // Verify token with auth.test
         let token = self.token()?;
-        let response = self.client
+        let response = self
+            .client
             .post(format!("{}/auth.test", self.base_url()))
             .header("Authorization", format!("Bearer {}", token))
             .send()
             .await
             .map_err(|e| ChannelError::ConnectionFailed(e.to_string()))?;
 
-        let result: serde_json::Value = response.json().await
+        let result: serde_json::Value = response
+            .json()
+            .await
             .map_err(|e| ChannelError::SerializationError(e.to_string()))?;
 
         if result["ok"].as_bool() == Some(true) {
@@ -132,7 +139,7 @@ impl ChannelAdapter for SlackAdapter {
         } else {
             self.set_status(ChannelStatus::Error);
             Err(ChannelError::AuthenticationFailed(
-                result["error"].as_str().unwrap_or("unknown").to_string()
+                result["error"].as_str().unwrap_or("unknown").to_string(),
             ))
         }
     }
@@ -147,7 +154,8 @@ impl ChannelAdapter for SlackAdapter {
         let msg_id = message.id.clone();
         let payload = self.format_message(&message);
 
-        let response = self.client
+        let response = self
+            .client
             .post(format!("{}/chat.postMessage", self.base_url()))
             .header("Authorization", format!("Bearer {}", token))
             .header("Content-Type", "application/json")
@@ -156,7 +164,9 @@ impl ChannelAdapter for SlackAdapter {
             .await
             .map_err(|e| ChannelError::ApiError(e.to_string()))?;
 
-        let result: serde_json::Value = response.json().await
+        let result: serde_json::Value = response
+            .json()
+            .await
             .map_err(|e| ChannelError::SerializationError(e.to_string()))?;
 
         if result["ok"].as_bool() == Some(true) {
@@ -167,7 +177,8 @@ impl ChannelAdapter for SlackAdapter {
 
             // Check for rate limiting
             if error == "ratelimited" {
-                let retry_after = result["retry_after"].as_u64()
+                let retry_after = result["retry_after"]
+                    .as_u64()
                     .map(std::time::Duration::from_secs);
                 return Err(ChannelError::RateLimited { retry_after });
             }
@@ -194,7 +205,8 @@ impl ChannelAdapter for SlackAdapter {
             "text": new_content,
         });
 
-        let response = self.client
+        let response = self
+            .client
             .post(format!("{}/chat.update", self.base_url()))
             .header("Authorization", format!("Bearer {}", token))
             .json(&payload)
@@ -202,14 +214,16 @@ impl ChannelAdapter for SlackAdapter {
             .await
             .map_err(|e| ChannelError::ApiError(e.to_string()))?;
 
-        let result: serde_json::Value = response.json().await
+        let result: serde_json::Value = response
+            .json()
+            .await
             .map_err(|e| ChannelError::SerializationError(e.to_string()))?;
 
         if result["ok"].as_bool() == Some(true) {
             Ok(())
         } else {
             Err(ChannelError::ApiError(
-                result["error"].as_str().unwrap_or("unknown").to_string()
+                result["error"].as_str().unwrap_or("unknown").to_string(),
             ))
         }
     }
@@ -221,7 +235,8 @@ impl ChannelAdapter for SlackAdapter {
             "ts": message_id.0,
         });
 
-        let response = self.client
+        let response = self
+            .client
             .post(format!("{}/chat.delete", self.base_url()))
             .header("Authorization", format!("Bearer {}", token))
             .json(&payload)
@@ -229,14 +244,16 @@ impl ChannelAdapter for SlackAdapter {
             .await
             .map_err(|e| ChannelError::ApiError(e.to_string()))?;
 
-        let result: serde_json::Value = response.json().await
+        let result: serde_json::Value = response
+            .json()
+            .await
             .map_err(|e| ChannelError::SerializationError(e.to_string()))?;
 
         if result["ok"].as_bool() == Some(true) {
             Ok(())
         } else {
             Err(ChannelError::ApiError(
-                result["error"].as_str().unwrap_or("unknown").to_string()
+                result["error"].as_str().unwrap_or("unknown").to_string(),
             ))
         }
     }
@@ -249,7 +266,8 @@ impl ChannelAdapter for SlackAdapter {
             "name": emoji.trim_matches(':'),
         });
 
-        let response = self.client
+        let response = self
+            .client
             .post(format!("{}/reactions.add", self.base_url()))
             .header("Authorization", format!("Bearer {}", token))
             .json(&payload)
@@ -257,14 +275,16 @@ impl ChannelAdapter for SlackAdapter {
             .await
             .map_err(|e| ChannelError::ApiError(e.to_string()))?;
 
-        let result: serde_json::Value = response.json().await
+        let result: serde_json::Value = response
+            .json()
+            .await
             .map_err(|e| ChannelError::SerializationError(e.to_string()))?;
 
         if result["ok"].as_bool() == Some(true) {
             Ok(())
         } else {
             Err(ChannelError::ApiError(
-                result["error"].as_str().unwrap_or("unknown").to_string()
+                result["error"].as_str().unwrap_or("unknown").to_string(),
             ))
         }
     }
@@ -288,7 +308,8 @@ impl MessageFormatter for SlackFormatter {
     }
 
     fn parse(&self, raw: &serde_json::Value) -> Result<ChannelMessage, ChannelError> {
-        let text = raw["text"].as_str()
+        let text = raw["text"]
+            .as_str()
             .ok_or_else(|| ChannelError::SerializationError("missing text".to_string()))?;
         let ts = raw["ts"].as_str().unwrap_or("");
         let channel = raw["channel"].as_str().unwrap_or("");
@@ -303,15 +324,16 @@ impl MessageFormatter for SlackFormatter {
     }
 
     fn supports(&self, feature: ChannelFeature) -> bool {
-        matches!(feature,
-            ChannelFeature::Threading |
-            ChannelFeature::Reactions |
-            ChannelFeature::Editing |
-            ChannelFeature::Deletion |
-            ChannelFeature::RichText |
-            ChannelFeature::Embeds |
-            ChannelFeature::Attachments |
-            ChannelFeature::Typing
+        matches!(
+            feature,
+            ChannelFeature::Threading
+                | ChannelFeature::Reactions
+                | ChannelFeature::Editing
+                | ChannelFeature::Deletion
+                | ChannelFeature::RichText
+                | ChannelFeature::Embeds
+                | ChannelFeature::Attachments
+                | ChannelFeature::Typing
         )
     }
 }
@@ -344,8 +366,7 @@ mod tests {
     #[test]
     fn test_message_formatting() {
         let adapter = SlackAdapter::new("test");
-        let msg = ChannelMessage::text("Hello Slack!")
-            .to("#general");
+        let msg = ChannelMessage::text("Hello Slack!").to("#general");
 
         let payload = adapter.format_message(&msg);
         assert_eq!(payload["channel"], "#general");

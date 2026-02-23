@@ -5,9 +5,7 @@
 use async_trait::async_trait;
 use std::sync::Arc;
 
-use super::domain::{
-    ProviderId, ProviderHealth, CooldownReason, FailoverStrategy, FailoverError,
-};
+use super::domain::{CooldownReason, FailoverError, FailoverStrategy, ProviderHealth, ProviderId};
 use crate::decision::LLMProvider;
 
 /// Port for managing provider health and cooldown states.
