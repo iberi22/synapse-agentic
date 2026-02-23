@@ -9,6 +9,7 @@ use crate::compaction::ports::{CompactionError, SummarizationPrompts, Summarizat
 use crate::decision::LLMProvider;
 
 /// Summarization strategy that uses an LLM to generate summaries.
+#[derive(Debug)]
 pub struct LLMSummarizer {
     /// The LLM provider to use for summarization
     provider: Arc<dyn LLMProvider>,

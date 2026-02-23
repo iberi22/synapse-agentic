@@ -15,6 +15,7 @@ use crate::resilience::ports::ProviderRegistry;
 ///
 /// Suitable for single-instance deployments. For distributed systems,
 /// consider implementing a SurrealDB or Redis-backed registry.
+#[derive(Debug)]
 pub struct InMemoryCooldownStore {
     providers: RwLock<HashMap<String, ProviderHealth>>,
     /// Index for round-robin selection

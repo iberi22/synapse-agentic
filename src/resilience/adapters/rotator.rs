@@ -5,7 +5,7 @@ use std::collections::HashMap;
 use std::sync::{Arc, RwLock};
 use tracing::{info, instrument, warn};
 
-use crate::decision::LLMProvider;
+use crate::decision::{DecisionContext, LLMProvider, RawLLMOutput};
 use crate::resilience::domain::{CooldownReason, FailoverError, FailoverStrategy, ProviderId};
 use crate::resilience::ports::{ProviderRegistry, ResilientProvider};
 
@@ -28,6 +28,7 @@ const MAX_FAILOVER_ATTEMPTS: usize = 5;
 ///     // let response = rotator.generate_with_failover("Hello").await?;
 /// }
 /// ```
+#[derive(Debug)]
 pub struct StochasticRotator<R: ProviderRegistry> {
     /// The registry tracking provider health
     registry: Arc<R>,
@@ -123,6 +124,88 @@ impl<R: ProviderRegistry> StochasticRotator<R> {
         } else {
             CooldownReason::Unknown(msg.chars().take(100).collect())
         }
+    }
+}
+
+#[async_trait]
+impl<R: ProviderRegistry + 'static> LLMProvider for StochasticRotator<R> {
+    fn name(&self) -> &str {
+        "stochastic-rotator"
+    }
+
+    fn cost_per_1k_tokens(&self) -> f64 {
+        0.0
+    }
+
+    async fn generate(&self, prompt: &str) -> anyhow::Result<String> {
+        self.generate_with_failover(prompt)
+            .await
+            .map_err(|e| anyhow::anyhow!(e))
+    }
+
+    async fn generate_decision(&self, context: &DecisionContext) -> anyhow::Result<RawLLMOutput> {
+        let strategy = self.strategy();
+        let mut excluded: Vec<ProviderId> = Vec::new();
+        let mut last_error: Option<FailoverError> = None;
+
+        for attempt in 0..MAX_FAILOVER_ATTEMPTS {
+            let selected = self.registry.select_next(strategy, &excluded).await
+                .map_err(|e| anyhow::anyhow!("Registry error: {}", e))?;
+
+            info!(
+                attempt = attempt + 1,
+                provider = %selected.key(),
+                "attempting decision generation"
+            );
+
+            let provider = {
+                let providers = self
+                    .providers
+                    .read()
+                    .map_err(|_| anyhow::anyhow!("lock poisoned"))?;
+
+                providers.get(&selected.key()).cloned()
+            };
+
+            if let Some(provider) = provider {
+                match provider.generate_decision(context).await {
+                    Ok(output) => {
+                        let _ = self.registry.record_success(&selected).await;
+
+                        // Update last used
+                        if let Ok(mut last) = self.last_used.write() {
+                            *last = Some(selected.clone());
+                        }
+
+                        info!(provider = %selected.key(), "decision generation successful");
+                        return Ok(output);
+                    }
+                    Err(e) => {
+                        let reason = Self::classify_error(&e);
+                        warn!(
+                            provider = %selected.key(),
+                            error = %e,
+                            reason = ?reason,
+                            "decision provider failed, entering cooldown"
+                        );
+
+                        let _ = self.registry.record_failure(&selected, reason).await;
+                        let provider_key = selected.key();
+                        excluded.push(selected);
+                        last_error = Some(FailoverError::ProviderError {
+                            provider: provider_key,
+                            message: e.to_string(),
+                        });
+                    }
+                }
+            } else {
+                excluded.push(selected);
+            }
+        }
+
+        Err(last_error
+            .map(|e| anyhow::anyhow!(e))
+            .unwrap_or_else(|| anyhow::anyhow!("All decision providers exhausted")))
     }
 }
 

@@ -136,6 +136,11 @@ impl DecisionEngine {
         }
     }
 
+    /// Returns the providers configured in this engine.
+    pub fn providers(&self) -> &[Arc<dyn LLMProvider>] {
+        &self.providers
+    }
+
     async fn decide_rule_based(&self, context: &DecisionContext) -> Result<Decision> {
         // Simple heuristic-based decision
         info!(domain = %context.domain, "Using rule-based decision (no LLM)");
