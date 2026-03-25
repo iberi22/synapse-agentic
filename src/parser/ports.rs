@@ -138,11 +138,8 @@ mod tests {
 
     #[test]
     fn test_sanitize_result_modified() {
-        let result = SanitizeResult::sanitized(
-            "fixed".to_string(),
-            vec!["rule1".to_string()],
-            Vec::new(),
-        );
+        let result =
+            SanitizeResult::sanitized("fixed".to_string(), vec!["rule1".to_string()], Vec::new());
         assert!(result.was_modified());
     }
 

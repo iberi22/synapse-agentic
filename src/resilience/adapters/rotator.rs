@@ -3,12 +3,10 @@
 use async_trait::async_trait;
 use std::collections::HashMap;
 use std::sync::{Arc, RwLock};
-use tracing::{info, warn, instrument};
+use tracing::{info, instrument, warn};
 
-use crate::decision::LLMProvider;
-use crate::resilience::domain::{
-    CooldownReason, FailoverError, FailoverStrategy, ProviderId,
-};
+use crate::decision::{DecisionContext, LLMProvider, RawLLMOutput};
+use crate::resilience::domain::{CooldownReason, FailoverError, FailoverStrategy, ProviderId};
 use crate::resilience::ports::{ProviderRegistry, ResilientProvider};
 
 /// Maximum number of failover attempts before giving up.
@@ -30,6 +28,7 @@ const MAX_FAILOVER_ATTEMPTS: usize = 5;
 ///     // let response = rotator.generate_with_failover("Hello").await?;
 /// }
 /// ```
+#[derive(Debug)]
 pub struct StochasticRotator<R: ProviderRegistry> {
     /// The registry tracking provider health
     registry: Arc<R>,
@@ -53,22 +52,20 @@ impl<R: ProviderRegistry> StochasticRotator<R> {
     }
 
     /// Attempts to generate using a specific provider.
-    async fn try_provider(
-        &self,
-        id: &ProviderId,
-        prompt: &str,
-    ) -> Result<String, FailoverError> {
+    async fn try_provider(&self, id: &ProviderId, prompt: &str) -> Result<String, FailoverError> {
         let provider = {
-            let providers = self.providers.read().map_err(|_| {
-                FailoverError::ConfigError("lock poisoned".into())
-            })?;
+            let providers = self
+                .providers
+                .read()
+                .map_err(|_| FailoverError::ConfigError("lock poisoned".into()))?;
 
-            providers.get(&id.key()).cloned().ok_or_else(|| {
-                FailoverError::ProviderError {
+            providers
+                .get(&id.key())
+                .cloned()
+                .ok_or_else(|| FailoverError::ProviderError {
                     provider: id.key(),
                     message: "provider not found in pool".into(),
-                }
-            })?
+                })?
         };
 
         match provider.generate(prompt).await {
@@ -108,17 +105,107 @@ impl<R: ProviderRegistry> StochasticRotator<R> {
 
         if msg.contains("429") || msg.contains("rate limit") || msg.contains("too many") {
             CooldownReason::RateLimit
-        } else if msg.contains("401") || msg.contains("403") || msg.contains("unauthorized") || msg.contains("forbidden") {
+        } else if msg.contains("401")
+            || msg.contains("403")
+            || msg.contains("unauthorized")
+            || msg.contains("forbidden")
+        {
             CooldownReason::AuthFailure
         } else if msg.contains("402") || msg.contains("quota") || msg.contains("billing") {
             CooldownReason::QuotaExceeded
         } else if msg.contains("timeout") || msg.contains("timed out") {
             CooldownReason::Timeout
-        } else if msg.contains("500") || msg.contains("502") || msg.contains("503") || msg.contains("504") {
+        } else if msg.contains("500")
+            || msg.contains("502")
+            || msg.contains("503")
+            || msg.contains("504")
+        {
             CooldownReason::ServerError
         } else {
             CooldownReason::Unknown(msg.chars().take(100).collect())
         }
+    }
+}
+
+#[async_trait]
+impl<R: ProviderRegistry + 'static> LLMProvider for StochasticRotator<R> {
+    fn name(&self) -> &str {
+        "stochastic-rotator"
+    }
+
+    fn cost_per_1k_tokens(&self) -> f64 {
+        0.0
+    }
+
+    async fn generate(&self, prompt: &str) -> anyhow::Result<String> {
+        self.generate_with_failover(prompt)
+            .await
+            .map_err(|e| anyhow::anyhow!(e))
+    }
+
+    async fn generate_decision(&self, context: &DecisionContext) -> anyhow::Result<RawLLMOutput> {
+        let strategy = self.strategy();
+        let mut excluded: Vec<ProviderId> = Vec::new();
+        let mut last_error: Option<FailoverError> = None;
+
+        for attempt in 0..MAX_FAILOVER_ATTEMPTS {
+            let selected = self.registry.select_next(strategy, &excluded).await
+                .map_err(|e| anyhow::anyhow!("Registry error: {}", e))?;
+
+            info!(
+                attempt = attempt + 1,
+                provider = %selected.key(),
+                "attempting decision generation"
+            );
+
+            let provider = {
+                let providers = self
+                    .providers
+                    .read()
+                    .map_err(|_| anyhow::anyhow!("lock poisoned"))?;
+
+                providers.get(&selected.key()).cloned()
+            };
+
+            if let Some(provider) = provider {
+                match provider.generate_decision(context).await {
+                    Ok(output) => {
+                        let _ = self.registry.record_success(&selected).await;
+
+                        // Update last used
+                        if let Ok(mut last) = self.last_used.write() {
+                            *last = Some(selected.clone());
+                        }
+
+                        info!(provider = %selected.key(), "decision generation successful");
+                        return Ok(output);
+                    }
+                    Err(e) => {
+                        let reason = Self::classify_error(&e);
+                        warn!(
+                            provider = %selected.key(),
+                            error = %e,
+                            reason = ?reason,
+                            "decision provider failed, entering cooldown"
+                        );
+
+                        let _ = self.registry.record_failure(&selected, reason).await;
+                        let provider_key = selected.key();
+                        excluded.push(selected);
+                        last_error = Some(FailoverError::ProviderError {
+                            provider: provider_key,
+                            message: e.to_string(),
+                        });
+                    }
+                }
+            } else {
+                excluded.push(selected);
+            }
+        }
+
+        Err(last_error
+            .map(|e| anyhow::anyhow!(e))
+            .unwrap_or_else(|| anyhow::anyhow!("All decision providers exhausted")))
     }
 }
 
@@ -148,9 +235,11 @@ impl<R: ProviderRegistry + 'static> ResilientProvider for StochasticRotator<R> {
             }
         }
 
-        Err(last_error.unwrap_or_else(|| FailoverError::AllProvidersExhausted {
-            message: format!("exhausted after {} attempts", MAX_FAILOVER_ATTEMPTS),
-        }))
+        Err(
+            last_error.unwrap_or_else(|| FailoverError::AllProvidersExhausted {
+                message: format!("exhausted after {} attempts", MAX_FAILOVER_ATTEMPTS),
+            }),
+        )
     }
 
     fn last_used_provider(&self) -> Option<ProviderId> {
@@ -215,8 +304,12 @@ mod tests {
 
     #[async_trait]
     impl LLMProvider for MockProvider {
-        fn name(&self) -> &str { &self.name }
-        fn cost_per_1k_tokens(&self) -> f64 { 0.01 }
+        fn name(&self) -> &str {
+            &self.name
+        }
+        fn cost_per_1k_tokens(&self) -> f64 {
+            0.01
+        }
 
         async fn generate(&self, _prompt: &str) -> anyhow::Result<String> {
             let count = self.fail_count.fetch_add(1, Ordering::SeqCst);
@@ -294,8 +387,14 @@ mod tests {
         tokio::time::sleep(tokio::time::Duration::from_millis(50)).await;
 
         // Force both into cooldown
-        store.record_failure(&id1, CooldownReason::ServerError).await.unwrap();
-        store.record_failure(&id2, CooldownReason::ServerError).await.unwrap();
+        store
+            .record_failure(&id1, CooldownReason::ServerError)
+            .await
+            .unwrap();
+        store
+            .record_failure(&id2, CooldownReason::ServerError)
+            .await
+            .unwrap();
 
         let result = rotator.generate_with_failover("test").await;
         assert!(result.is_err());

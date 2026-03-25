@@ -47,69 +47,69 @@
 #![warn(missing_docs)]
 #![warn(rust_2018_idioms)]
 
+pub mod channels;
+pub mod compaction;
+pub mod decision;
 pub mod framework;
 pub mod mcp;
-pub mod decision;
-pub mod persistence;
-pub mod telemetry;
-pub mod resilience;
-pub mod compaction;
-pub mod security;
 pub mod parser;
-pub mod channels;
+pub mod persistence;
+pub mod resilience;
+pub mod security;
+pub mod telemetry;
 
 /// Convenient re-exports for common use cases
 pub mod prelude {
+    pub use crate::framework::{Agent, AgentHandle, EventBus, Hive, MemoryFragment, MemoryStore};
     pub use crate::telemetry::init_telemetry;
-    pub use crate::framework::{Agent, AgentHandle, Hive, EventBus, MemoryStore, MemoryFragment};
     // Updated MCP exports
-    pub use crate::mcp::{
-        Tool, ToolRegistry, ToolContext, EmptyContext,
-        McpServer, McpRegistry, Resource, Prompt
+    pub use crate::decision::{
+        Decision, DecisionContext, DecisionEngine, GeminiProvider, LLMProvider, MinimaxProvider,
     };
-    pub use crate::decision::{LLMProvider, DecisionContext, DecisionEngine, Decision};
+    pub use crate::mcp::{
+        EmptyContext, McpRegistry, McpServer, Prompt, Resource, Tool, ToolContext, ToolRegistry,
+    };
     pub use crate::persistence::{
-        DatabaseAdapter, TypedDatabaseOps, GraphAdapter, VectorAdapter,
-        DatabaseManager, DatabaseHealth, DatabaseConfig, PrimaryDbConfig, VectorDbConfig,
-        Entity, EntityId, QueryResult, Filter, Sort, Pagination
+        DatabaseAdapter, DatabaseConfig, DatabaseHealth, DatabaseManager, Entity, EntityId, Filter,
+        GraphAdapter, Pagination, PrimaryDbConfig, QueryResult, Sort, TypedDatabaseOps,
+        VectorAdapter, VectorDbConfig,
     };
     // Resilience exports
     pub use crate::resilience::{
-        ProviderId, ProviderHealth, CooldownReason, FailoverStrategy, FailoverError,
-        ProviderRegistry, ResilientProvider, StochasticRotator, InMemoryCooldownStore,
+        CooldownReason, FailoverError, FailoverStrategy, InMemoryCooldownStore, ProviderHealth,
+        ProviderId, ProviderRegistry, ResilientProvider, StochasticRotator,
     };
     // Compaction exports
     pub use crate::compaction::{
-        Message, MessageRole, MessageChunk, SessionContext,
-        CompactionResult, CompactionConfig, ContextOverflowRisk,
-        SummarizationStrategy, TokenCounter, SimpleTokenEstimator, LLMSummarizer,
+        CompactionConfig, CompactionResult, ContextOverflowRisk, LLMSummarizer, Message,
+        MessageChunk, MessageRole, SessionContext, SimpleTokenEstimator, SummarizationStrategy,
+        TokenCounter,
     };
     // Security exports
     pub use crate::security::{
-        PIIType, SensitivityLevel, RedactionConfig, RedactionResult, ValidationResult,
-        PIIRedactor, OutputValidator, JSONValidator, ToolResultGuard,
-        RegexPIIRedactor, StructuredJSONValidator,
+        JSONValidator, OutputValidator, PIIRedactor, PIIType, RedactionConfig, RedactionResult,
+        RegexPIIRedactor, SensitivityLevel, StructuredJSONValidator, ToolResultGuard,
+        ValidationResult,
     };
     // Parser exports (Self-Healing)
     pub use crate::parser::{
-        LLMOutput, ParsedOutput, OutputFormat, RepairAction, RepairSeverity,
-        OutputParser, SelfHealer, JsonExtractor, MarkdownCleaner, SelfHealingPipeline,
+        JsonExtractor, LLMOutput, MarkdownCleaner, OutputFormat, OutputParser, ParsedOutput,
+        RepairAction, RepairSeverity, SelfHealer, SelfHealingPipeline,
     };
     // Channels exports (Multichannel)
     pub use crate::channels::{
-        Channel, MessageId, MessageContent, ChannelMessage, ThreadContext,
-        Attachment, ChannelConfig, ChannelStatus, DeliveryStatus,
-        ChannelError, SendResult, ReceiveResult, ChannelAdapter, MessageFormatter,
-        ChannelFeature, RateLimiter, SlackAdapter, SlackFormatter, WebSocketAdapter,
-        WebSocketFormatter, TokenBucketLimiter, SlidingWindowLimiter, CompositeLimiter,
-        ChannelManager, RoutingStrategy, MessageLogEntry, ContentRouter,
+        Attachment, Channel, ChannelAdapter, ChannelConfig, ChannelError, ChannelFeature,
+        ChannelManager, ChannelMessage, ChannelStatus, CompositeLimiter, ContentRouter,
+        DeliveryStatus, MessageContent, MessageFormatter, MessageId, MessageLogEntry, RateLimiter,
+        ReceiveResult, RoutingStrategy, SendResult, SlackAdapter, SlackFormatter,
+        SlidingWindowLimiter, ThreadContext, TokenBucketLimiter, WebSocketAdapter,
+        WebSocketFormatter,
     };
-    pub use async_trait::async_trait;
     pub use anyhow::Result;
+    pub use async_trait::async_trait;
 }
 
 // Re-export key types at crate root
 pub use framework::{Agent, AgentHandle, Hive};
-pub use persistence::{DatabaseManager, DatabaseConfig};
-pub use mcp::{Tool, McpServer, McpRegistry};
-
+pub use mcp::{McpRegistry, McpServer, Tool};
+pub use persistence::{DatabaseConfig, DatabaseManager};

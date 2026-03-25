@@ -1,7 +1,7 @@
 //! Domain Layer: Core compaction entities and value objects.
 
-use std::time::SystemTime;
 use serde::{Deserialize, Serialize};
+use std::time::SystemTime;
 
 /// Role of a message in the conversation.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
@@ -85,12 +85,9 @@ pub struct MessageChunk {
 impl MessageChunk {
     /// Creates a new chunk from messages.
     pub fn new(messages: Vec<Message>, start_index: usize) -> Self {
-        let total_tokens = messages
-            .iter()
-            .filter_map(|m| m.token_count)
-            .sum();
+        let total_tokens = messages.iter().filter_map(|m| m.token_count).sum();
         let end_index = start_index + messages.len();
-        
+
         Self {
             messages,
             total_tokens,
@@ -142,11 +139,11 @@ pub struct CompactionConfig {
 impl Default for CompactionConfig {
     fn default() -> Self {
         Self {
-            hard_limit: 100_000,      // ~100k tokens
-            soft_limit: 80_000,       // Start preparing at 80k
-            preserve_recent: 10,      // Keep last 10 messages intact
-            target_ratio: 0.4,        // Reduce to 40% of original
-            min_chunk_size: 5,        // At least 5 messages per chunk
+            hard_limit: 100_000, // ~100k tokens
+            soft_limit: 80_000,  // Start preparing at 80k
+            preserve_recent: 10, // Keep last 10 messages intact
+            target_ratio: 0.4,   // Reduce to 40% of original
+            min_chunk_size: 5,   // At least 5 messages per chunk
         }
     }
 }
@@ -227,10 +224,7 @@ impl SessionContext {
 
     /// Recalculates total tokens from messages.
     pub fn recalculate_tokens(&mut self) {
-        self.total_tokens = self.messages
-            .iter()
-            .filter_map(|m| m.token_count)
-            .sum();
+        self.total_tokens = self.messages.iter().filter_map(|m| m.token_count).sum();
     }
 
     /// Assesses the current overflow risk.
@@ -246,13 +240,19 @@ impl SessionContext {
 
     /// Returns messages that can be compacted (excludes recent).
     pub fn compactable_messages(&self) -> &[Message] {
-        let end = self.messages.len().saturating_sub(self.config.preserve_recent);
+        let end = self
+            .messages
+            .len()
+            .saturating_sub(self.config.preserve_recent);
         &self.messages[..end]
     }
 
     /// Returns recent messages that should be preserved.
     pub fn recent_messages(&self) -> &[Message] {
-        let start = self.messages.len().saturating_sub(self.config.preserve_recent);
+        let start = self
+            .messages
+            .len()
+            .saturating_sub(self.config.preserve_recent);
         &self.messages[start..]
     }
 
@@ -271,8 +271,8 @@ impl SessionContext {
         for (i, message) in compactable.iter().enumerate() {
             let msg_tokens = message.token_count.unwrap_or(100); // Estimate if not cached
 
-            if current_tokens + msg_tokens > max_tokens_per_chunk 
-                && current_chunk.len() >= self.config.min_chunk_size 
+            if current_tokens + msg_tokens > max_tokens_per_chunk
+                && current_chunk.len() >= self.config.min_chunk_size
             {
                 chunks.push(MessageChunk::new(current_chunk, start_index));
                 current_chunk = Vec::new();
@@ -295,9 +295,9 @@ impl SessionContext {
     /// Replaces compacted messages with summaries.
     pub fn apply_compaction(&mut self, result: CompactionResult) {
         // Remove the compacted messages
-        let ids_to_remove: std::collections::HashSet<_> = 
+        let ids_to_remove: std::collections::HashSet<_> =
             result.replaced_message_ids.iter().collect();
-        
+
         self.messages.retain(|m| !ids_to_remove.contains(&m.id));
 
         // Insert summaries at the beginning (before recent messages)
@@ -391,7 +391,7 @@ mod tests {
             ..Default::default()
         };
         let mut session = SessionContext::new(config);
-        
+
         assert_eq!(session.overflow_risk(), ContextOverflowRisk::None);
 
         session.add_message(Message::new(MessageRole::User, "test").with_tokens(85));
@@ -412,14 +412,13 @@ mod tests {
 
         for i in 0..10 {
             session.add_message(
-                Message::new(MessageRole::User, format!("Message {}", i))
-                    .with_tokens(100)
+                Message::new(MessageRole::User, format!("Message {}", i)).with_tokens(100),
             );
         }
 
         let chunks = session.create_chunks(250);
         assert!(!chunks.is_empty());
-        
+
         // Recent 2 should be preserved
         assert_eq!(session.recent_messages().len(), 2);
     }

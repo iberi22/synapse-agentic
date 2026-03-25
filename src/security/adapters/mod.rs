@@ -1,7 +1,7 @@
 //! Adapters for security module.
 
-mod pii_redactor;
 mod json_validator;
+mod pii_redactor;
 
-pub use pii_redactor::RegexPIIRedactor;
 pub use json_validator::StructuredJSONValidator;
+pub use pii_redactor::RegexPIIRedactor;

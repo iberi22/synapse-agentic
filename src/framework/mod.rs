@@ -11,11 +11,12 @@
 //! - [`MemoryStore`] - Trait for agent memory backends
 
 mod agent;
-mod hive;
 mod bus;
+mod hive;
 mod memory;
+pub mod workflow;
 
 pub use agent::{Agent, AgentHandle};
-pub use hive::Hive;
 pub use bus::EventBus;
-pub use memory::{MemoryStore, MemoryFragment};
+pub use hive::Hive;
+pub use memory::{MemoryFragment, MemoryStore};

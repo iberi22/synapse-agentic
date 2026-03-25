@@ -125,7 +125,9 @@ impl OutputSanitizer for MarkdownCleaner {
 
         // Apply built-in patterns
         for (pattern, replacement, repair_type) in &self.patterns {
-            let new_result = pattern.replace_all(&result, replacement.as_str()).to_string();
+            let new_result = pattern
+                .replace_all(&result, replacement.as_str())
+                .to_string();
             if new_result != result {
                 repairs.push(RepairAction::new(*repair_type, "markdown cleanup"));
                 result = new_result;
@@ -211,8 +213,7 @@ mod tests {
     fn test_custom_rule() {
         let mut cleaner = MarkdownCleaner::new();
         cleaner.add_rule(
-            SanitizationRule::new("remove_prefix", r"^PREFIX:\s*", "")
-                .with_type(RepairType::Other),
+            SanitizationRule::new("remove_prefix", r"^PREFIX:\s*", "").with_type(RepairType::Other),
         );
 
         let result = cleaner.sanitize("PREFIX: actual content");

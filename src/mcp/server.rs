@@ -1,10 +1,10 @@
 //! MCP Server implementation (JSON-RPC 2.0 over Stdio).
 
-use std::io::{self, BufRead, Write};
-use std::sync::Arc;
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
-use tracing::{info, error, debug};
+use std::io::{self, BufRead, Write};
+use std::sync::Arc;
+use tracing::{debug, error, info};
 
 use super::registry::McpRegistry; // Used to be ToolRegistry
 use super::tool::ToolContext;
@@ -86,7 +86,11 @@ impl<C: ToolContext + 'static> McpServer<C> {
     }
 
     /// Creates a new MCP server with custom configuration.
-    pub fn with_config(registry: Arc<McpRegistry>, context: Arc<C>, config: McpServerConfig) -> Self {
+    pub fn with_config(
+        registry: Arc<McpRegistry>,
+        context: Arc<C>,
+        config: McpServerConfig,
+    ) -> Self {
         Self {
             registry,
             context,
@@ -198,12 +202,13 @@ impl<C: ToolContext + 'static> McpServer<C> {
                 message: "Missing tool name".to_string(),
             })?;
 
-        let args = params
-            .get("arguments")
-            .cloned()
-            .unwrap_or(Value::Null);
+        let args = params.get("arguments").cloned().unwrap_or(Value::Null);
 
-        match self.registry.call_tool(name, self.context.as_ref(), args).await {
+        match self
+            .registry
+            .call_tool(name, self.context.as_ref(), args)
+            .await
+        {
             Ok(result) => Ok(json!({
                 "content": [{
                     "type": "text",
@@ -272,10 +277,7 @@ impl<C: ToolContext + 'static> McpServer<C> {
                 message: "Missing prompt name".to_string(),
             })?;
 
-        let arguments_json = params
-            .get("arguments")
-            .cloned()
-            .unwrap_or(json!({}));
+        let arguments_json = params.get("arguments").cloned().unwrap_or(json!({}));
 
         // Convert arguments to HashMap<String, String>
         let mut arguments = std::collections::HashMap::new();
@@ -296,4 +298,3 @@ impl<C: ToolContext + 'static> McpServer<C> {
         }
     }
 }
-

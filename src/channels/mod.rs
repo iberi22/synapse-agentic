@@ -39,26 +39,25 @@
 //! manager.send(Channel::Slack, "#general", msg).await?;
 //! ```
 
+pub mod adapters;
 pub mod domain;
 pub mod ports;
-pub mod adapters;
 
 // Domain exports
 pub use domain::{
-    Channel, ChannelMessage, MessageContent, ThreadContext,
-    Attachment, AttachmentType, ChannelConfig, ChannelStatus,
-    DeliveryStatus, MessageId, EmbedContent,
+    Attachment, AttachmentType, Channel, ChannelConfig, ChannelMessage, ChannelStatus,
+    DeliveryStatus, EmbedContent, MessageContent, MessageId, ThreadContext,
 };
 
 // Port exports
 pub use ports::{
-    ChannelAdapter, MessageFormatter, RateLimiter,
-    SendResult, ReceiveResult, ChannelError, ChannelFeature,
+    ChannelAdapter, ChannelError, ChannelFeature, MessageFormatter, RateLimiter, ReceiveResult,
+    SendResult,
 };
 
 // Adapter exports
 pub use adapters::{
-    SlackAdapter, SlackFormatter, WebSocketAdapter, WebSocketFormatter,
-    TokenBucketLimiter, SlidingWindowLimiter, CompositeLimiter,
-    ChannelManager, RoutingStrategy, MessageLogEntry, ContentRouter,
+    ChannelManager, CompositeLimiter, ContentRouter, MessageLogEntry, RoutingStrategy,
+    SlackAdapter, SlackFormatter, SlidingWindowLimiter, TokenBucketLimiter, WebSocketAdapter,
+    WebSocketFormatter,
 };

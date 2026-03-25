@@ -42,8 +42,7 @@ impl RegexPIIRedactor {
         // SSN: XXX-XX-XXXX format
         patterns.insert(
             PIIType::SSN,
-            Regex::new(r"\b[0-9]{3}-[0-9]{2}-[0-9]{4}\b")
-                .expect("invalid SSN regex"),
+            Regex::new(r"\b[0-9]{3}-[0-9]{2}-[0-9]{4}\b").expect("invalid SSN regex"),
         );
 
         // IP Address: IPv4
@@ -70,8 +69,7 @@ impl RegexPIIRedactor {
         // AWS Access Key
         patterns.insert(
             PIIType::AWSKey,
-            Regex::new(r"(?:AKIA|ABIA|ACCA|ASIA)[A-Z0-9]{16}")
-                .expect("invalid AWS key regex"),
+            Regex::new(r"(?:AKIA|ABIA|ACCA|ASIA)[A-Z0-9]{16}").expect("invalid AWS key regex"),
         );
 
         // Private Key markers
@@ -91,8 +89,10 @@ impl RegexPIIRedactor {
         // Generic secrets (bearer tokens, etc.)
         patterns.insert(
             PIIType::GenericSecret,
-            Regex::new(r#"(?i)(?:bearer|token|secret|auth)["']?\s*[:=]\s*["']?([a-zA-Z0-9_.-]{20,})["']?"#)
-                .expect("invalid generic secret regex"),
+            Regex::new(
+                r#"(?i)(?:bearer|token|secret|auth)["']?\s*[:=]\s*["']?([a-zA-Z0-9_.-]{20,})["']?"#,
+            )
+            .expect("invalid generic secret regex"),
         );
 
         Self { patterns }
@@ -211,9 +211,7 @@ mod tests {
         let redactor = RegexPIIRedactor::new();
         let config = RedactionConfig::default();
 
-        let result = redactor
-            .redact("Call me at (555) 123-4567", &config)
-            .await;
+        let result = redactor.redact("Call me at (555) 123-4567", &config).await;
 
         assert!(result.was_redacted());
         assert!(result.text.contains("[PHONE_REDACTED]"));
@@ -224,9 +222,7 @@ mod tests {
         let redactor = RegexPIIRedactor::new();
         let config = RedactionConfig::default();
 
-        let result = redactor
-            .redact("SSN: 123-45-6789", &config)
-            .await;
+        let result = redactor.redact("SSN: 123-45-6789", &config).await;
 
         assert!(result.was_redacted());
         assert!(result.text.contains("[SSN_REDACTED]"));
@@ -238,9 +234,7 @@ mod tests {
         let redactor = RegexPIIRedactor::new();
         let config = RedactionConfig::strict();
 
-        let result = redactor
-            .redact("Password: mysecretpass123", &config)
-            .await;
+        let result = redactor.redact("Password: mysecretpass123", &config).await;
 
         assert!(result.blocked);
     }
@@ -278,9 +272,7 @@ mod tests {
         let redactor = RegexPIIRedactor::new();
         let config = RedactionConfig::default();
 
-        let result = redactor
-            .redact("Server IP: 192.168.1.100", &config)
-            .await;
+        let result = redactor.redact("Server IP: 192.168.1.100", &config).await;
 
         assert!(result.was_redacted());
         assert!(result.text.contains("[IP_REDACTED]"));

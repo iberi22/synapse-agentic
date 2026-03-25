@@ -1,7 +1,7 @@
 //! Agent trait and handle definitions.
 
-use async_trait::async_trait;
 use anyhow::Result;
+use async_trait::async_trait;
 use std::fmt::Debug;
 use std::sync::Arc;
 use tokio::sync::mpsc;
@@ -66,6 +66,21 @@ pub trait Agent: Send + Sync + 'static {
         Ok(())
     }
 
+    /// Serializes the current internal state of the agent.
+    ///
+    /// Useful for persisting agent state across restarts (e.g. into memory or DB).
+    /// Returns `None` if the agent is stateless or does not support snapshotting.
+    fn snapshot(&self) -> Option<serde_json::Value> {
+        None
+    }
+
+    /// Restores the internal state of the agent from a snapshot.
+    ///
+    /// This is called during initialization if a previous state snapshot was provided.
+    fn restore(&mut self, _state: &serde_json::Value) -> Result<()> {
+        Ok(())
+    }
+
     /// Returns the name of the agent (for logging/debugging).
     fn name(&self) -> &str;
 }
@@ -114,18 +129,19 @@ where
     ///
     /// Returns an error if the agent has been shut down.
     pub async fn send(&self, message: T) -> Result<()> {
-        self.tx.send(message).await.map_err(|_| {
-            anyhow::anyhow!("Failed to send message to agent: {}", self.name)
-        })
+        self.tx
+            .send(message)
+            .await
+            .map_err(|_| anyhow::anyhow!("Failed to send message to agent: {}", self.name))
     }
 
     /// Attempts to send a message without waiting.
     ///
     /// Returns an error if the channel is full or closed.
     pub fn try_send(&self, message: T) -> Result<()> {
-        self.tx.try_send(message).map_err(|e| {
-            anyhow::anyhow!("Failed to send message to agent {}: {}", self.name, e)
-        })
+        self.tx
+            .try_send(message)
+            .map_err(|e| anyhow::anyhow!("Failed to send message to agent {}: {}", self.name, e))
     }
 
     /// Returns the name of the agent this handle points to.

@@ -8,8 +8,8 @@ use crate::channels::ports::{
 };
 use async_trait::async_trait;
 use std::collections::VecDeque;
-use std::sync::{Arc, Mutex};
 use std::sync::atomic::{AtomicU8, Ordering};
+use std::sync::{Arc, Mutex};
 
 /// WebSocket adapter for generic real-time communication.
 pub struct WebSocketAdapter {
@@ -22,8 +22,7 @@ pub struct WebSocketAdapter {
 impl WebSocketAdapter {
     /// Creates a new WebSocket adapter.
     pub fn new(endpoint: impl Into<String>) -> Self {
-        let config = ChannelConfig::new(Channel::WebSocket)
-            .with_base_url(endpoint);
+        let config = ChannelConfig::new(Channel::WebSocket).with_base_url(endpoint);
 
         Self {
             config,
@@ -84,13 +83,15 @@ impl ChannelAdapter for WebSocketAdapter {
     async fn connect(&mut self) -> Result<(), ChannelError> {
         self.set_status(ChannelStatus::Connecting);
 
-        let url = self.config.base_url.as_deref()
-            .ok_or_else(|| ChannelError::ConnectionFailed("no endpoint configured".to_string()))?;
+        let url =
+            self.config.base_url.as_deref().ok_or_else(|| {
+                ChannelError::ConnectionFailed("no endpoint configured".to_string())
+            })?;
 
         // Validate URL format
         if !url.starts_with("ws://") && !url.starts_with("wss://") {
             return Err(ChannelError::ConnectionFailed(
-                "invalid WebSocket URL scheme".to_string()
+                "invalid WebSocket URL scheme".to_string(),
             ));
         }
 
@@ -129,13 +130,13 @@ impl ChannelAdapter for WebSocketAdapter {
             return Err(ChannelError::ConnectionFailed("not connected".to_string()));
         }
 
-        let mut buffer = self.message_buffer.lock()
+        let mut buffer = self
+            .message_buffer
+            .lock()
             .map_err(|_| ChannelError::Internal("lock poisoned".to_string()))?;
 
         let take_count = limit.min(buffer.len());
-        let messages: Vec<ChannelMessage> = buffer
-            .drain(..take_count)
-            .collect();
+        let messages: Vec<ChannelMessage> = buffer.drain(..take_count).collect();
 
         let has_more = !buffer.is_empty();
 

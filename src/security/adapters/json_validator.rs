@@ -17,8 +17,10 @@ impl StructuredJSONValidator {
         Self {
             max_size: 1024 * 1024, // 1MB default
             max_depth: 50,
-            json_extractor: Regex::new(r"(?s)(\{[^{}]*(?:\{[^{}]*\}[^{}]*)*\}|\[[^\[\]]*(?:\[[^\[\]]*\][^\[\]]*)*\])")
-                .expect("invalid JSON extractor regex"),
+            json_extractor: Regex::new(
+                r"(?s)(\{[^{}]*(?:\{[^{}]*\}[^{}]*)*\}|\[[^\[\]]*(?:\[[^\[\]]*\][^\[\]]*)*\])",
+            )
+            .expect("invalid JSON extractor regex"),
         }
     }
 
@@ -132,21 +134,26 @@ impl OutputValidator for StructuredJSONValidator {
     }
 
     fn try_repair(&self, content: &str) -> Result<String, ValidationError> {
-        self.attempt_repairs(content).ok_or_else(|| ValidationError::MalformedJSON {
-            message: "unable to repair JSON".to_string(),
-            position: None,
-        })
+        self.attempt_repairs(content)
+            .ok_or_else(|| ValidationError::MalformedJSON {
+                message: "unable to repair JSON".to_string(),
+                position: None,
+            })
     }
 }
 
 impl JSONValidator for StructuredJSONValidator {
     fn validate_structure(&self, json: &str) -> Result<(), ValidationError> {
-        serde_json::from_str::<serde_json::Value>(json).map(|_| ()).map_err(|e| {
-            ValidationError::MalformedJSON {
+        serde_json::from_str::<serde_json::Value>(json)
+            .map(|_| ())
+            .map_err(|e| ValidationError::MalformedJSON {
                 message: e.to_string(),
-                position: if e.is_syntax() { Some(e.column()) } else { None },
-            }
-        })
+                position: if e.is_syntax() {
+                    Some(e.column())
+                } else {
+                    None
+                },
+            })
     }
 
     fn extract_json(&self, content: &str) -> Option<String> {
@@ -258,7 +265,10 @@ mod tests {
         let result = validator.validate(r#"{"key": "this is a long value"}"#);
 
         assert!(!result.valid);
-        assert!(matches!(result.errors[0], ValidationError::SizeExceeded { .. }));
+        assert!(matches!(
+            result.errors[0],
+            ValidationError::SizeExceeded { .. }
+        ));
     }
 
     #[test]
@@ -287,16 +297,10 @@ Done!"#;
     fn test_validate_required_fields() {
         let validator = StructuredJSONValidator::new();
 
-        let result = validator.validate_fields(
-            r#"{"name": "test", "id": 1}"#,
-            &["name", "id"],
-        );
+        let result = validator.validate_fields(r#"{"name": "test", "id": 1}"#, &["name", "id"]);
         assert!(result.is_ok());
 
-        let result = validator.validate_fields(
-            r#"{"name": "test"}"#,
-            &["name", "id"],
-        );
+        let result = validator.validate_fields(r#"{"name": "test"}"#, &["name", "id"]);
         assert!(result.is_err());
         assert_eq!(result.unwrap_err().len(), 1);
     }
@@ -320,6 +324,9 @@ Done!"#;
         let result = validator.validate(r#"{"key": broken}"#);
 
         assert!(!result.valid);
-        assert!(matches!(result.errors[0], ValidationError::MalformedJSON { .. }));
+        assert!(matches!(
+            result.errors[0],
+            ValidationError::MalformedJSON { .. }
+        ));
     }
 }

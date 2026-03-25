@@ -126,8 +126,8 @@ impl SimpleTokenEstimator {
         }
 
         // Numbers often tokenize as multiple tokens
-        let digit_ratio = text.chars().filter(|c| c.is_numeric()).count() as f32
-            / text.len().max(1) as f32;
+        let digit_ratio =
+            text.chars().filter(|c| c.is_numeric()).count() as f32 / text.len().max(1) as f32;
         if digit_ratio > 0.1 {
             adjustment *= 1.1;
         }
@@ -194,10 +194,7 @@ mod tests {
     fn test_message_overhead() {
         let estimator = SimpleTokenEstimator::default();
 
-        let msg = Message::new(
-            crate::compaction::domain::MessageRole::User,
-            "Hello"
-        );
+        let msg = Message::new(crate::compaction::domain::MessageRole::User, "Hello");
 
         let content_tokens = estimator.count_tokens("Hello").unwrap();
         let message_tokens = estimator.count_message(&msg).unwrap();

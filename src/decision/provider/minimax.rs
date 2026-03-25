@@ -1,9 +1,9 @@
 //! Minimax LLM Provider implementation.
 
-use async_trait::async_trait;
 use anyhow::Result;
-use tracing::{info, error};
+use async_trait::async_trait;
 use std::fmt::Debug;
+use tracing::{error, info};
 
 use super::LLMProvider;
 
@@ -18,7 +18,11 @@ pub struct MinimaxProvider {
 impl MinimaxProvider {
     /// Creates a new MinimaxProvider.
     pub fn new(api_key: String, group_id: String, model: String) -> Self {
-        Self { api_key, _group_id: group_id, model }
+        Self {
+            api_key,
+            _group_id: group_id,
+            model,
+        }
     }
 }
 
@@ -46,7 +50,8 @@ impl LLMProvider for MinimaxProvider {
         });
 
         let client = reqwest::Client::new();
-        let resp = client.post(url)
+        let resp = client
+            .post(url)
             .header("Authorization", format!("Bearer {}", self.api_key))
             .header("Content-Type", "application/json")
             .json(&body)

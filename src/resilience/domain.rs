@@ -228,7 +228,7 @@ pub enum FailoverError {
     #[error("all providers exhausted: {message}")]
     AllProvidersExhausted {
         /// Error message describing the exhaustion.
-        message: String
+        message: String,
     },
 
     /// No providers configured
@@ -241,7 +241,7 @@ pub enum FailoverError {
         /// Name of the failed provider.
         provider: String,
         /// Error message.
-        message: String
+        message: String,
     },
 
     /// Configuration error
@@ -314,13 +314,31 @@ mod tests {
 
     #[test]
     fn test_cooldown_reason_from_status_comprehensive() {
-        assert_eq!(CooldownReason::from_status(401), CooldownReason::AuthFailure);
-        assert_eq!(CooldownReason::from_status(403), CooldownReason::AuthFailure);
-        assert_eq!(CooldownReason::from_status(402), CooldownReason::QuotaExceeded);
+        assert_eq!(
+            CooldownReason::from_status(401),
+            CooldownReason::AuthFailure
+        );
+        assert_eq!(
+            CooldownReason::from_status(403),
+            CooldownReason::AuthFailure
+        );
+        assert_eq!(
+            CooldownReason::from_status(402),
+            CooldownReason::QuotaExceeded
+        );
         assert_eq!(CooldownReason::from_status(429), CooldownReason::RateLimit);
-        assert_eq!(CooldownReason::from_status(500), CooldownReason::ServerError);
-        assert_eq!(CooldownReason::from_status(503), CooldownReason::ServerError);
-        assert_eq!(CooldownReason::from_status(599), CooldownReason::ServerError);
+        assert_eq!(
+            CooldownReason::from_status(500),
+            CooldownReason::ServerError
+        );
+        assert_eq!(
+            CooldownReason::from_status(503),
+            CooldownReason::ServerError
+        );
+        assert_eq!(
+            CooldownReason::from_status(599),
+            CooldownReason::ServerError
+        );
         assert_eq!(
             CooldownReason::from_status(404),
             CooldownReason::Unknown("HTTP 404".into())

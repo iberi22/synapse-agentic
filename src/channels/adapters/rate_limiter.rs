@@ -35,14 +35,14 @@ impl TokenBucketLimiter {
     /// Creates with channel-specific defaults.
     pub fn for_channel(channel: Channel) -> Self {
         match channel {
-            Channel::Slack => Self::new(50, 1.0),      // 50 burst, 1/sec sustained
-            Channel::Discord => Self::new(30, 0.5),    // 30 burst, 0.5/sec
-            Channel::Telegram => Self::new(30, 1.0),   // 30/sec limit
-            Channel::Teams => Self::new(20, 0.5),      // Conservative
+            Channel::Slack => Self::new(50, 1.0), // 50 burst, 1/sec sustained
+            Channel::Discord => Self::new(30, 0.5), // 30 burst, 0.5/sec
+            Channel::Telegram => Self::new(30, 1.0), // 30/sec limit
+            Channel::Teams => Self::new(20, 0.5), // Conservative
             Channel::WebSocket => Self::new(100, 10.0), // High throughput
-            Channel::Webhook => Self::new(10, 0.2),    // Low rate
-            Channel::Email => Self::new(5, 0.05),      // Very low
-            Channel::Custom => Self::new(20, 1.0),     // Reasonable default
+            Channel::Webhook => Self::new(10, 0.2), // Low rate
+            Channel::Email => Self::new(5, 0.05), // Very low
+            Channel::Custom => Self::new(20, 1.0), // Reasonable default
         }
     }
 
@@ -72,8 +72,7 @@ impl RateLimiter for TokenBucketLimiter {
         let elapsed = now.duration_since(last_update).as_secs_f64();
 
         // Add tokens based on elapsed time
-        let new_tokens = (current_tokens + elapsed * self.refill_rate)
-            .min(self.capacity as f64);
+        let new_tokens = (current_tokens + elapsed * self.refill_rate).min(self.capacity as f64);
 
         if new_tokens >= 1.0 {
             Ok(())
@@ -91,8 +90,7 @@ impl RateLimiter for TokenBucketLimiter {
         let elapsed = now.duration_since(last_update).as_secs_f64();
 
         // Add tokens based on elapsed time
-        let new_tokens = (current_tokens + elapsed * self.refill_rate)
-            .min(self.capacity as f64);
+        let new_tokens = (current_tokens + elapsed * self.refill_rate).min(self.capacity as f64);
 
         if new_tokens >= 1.0 {
             // Consume one token
@@ -117,8 +115,7 @@ impl RateLimiter for TokenBucketLimiter {
     fn remaining(&self, channel: Channel) -> u32 {
         let (current_tokens, last_update) = self.get_or_create_bucket(channel);
         let elapsed = Instant::now().duration_since(last_update).as_secs_f64();
-        let tokens = (current_tokens + elapsed * self.refill_rate)
-            .min(self.capacity as f64);
+        let tokens = (current_tokens + elapsed * self.refill_rate).min(self.capacity as f64);
         tokens.floor() as u32
     }
 }
@@ -157,7 +154,8 @@ impl SlidingWindowLimiter {
         let mut timestamps = self.timestamps.lock().unwrap();
         let window_start = now - self.window;
 
-        timestamps.entry(channel)
+        timestamps
+            .entry(channel)
             .or_insert_with(Vec::new)
             .retain(|&t| t > window_start);
 
@@ -191,9 +189,7 @@ impl RateLimiter for SlidingWindowLimiter {
 
         if recent.len() < self.max_requests as usize {
             let mut timestamps = self.timestamps.lock().unwrap();
-            timestamps.entry(channel)
-                .or_insert_with(Vec::new)
-                .push(now);
+            timestamps.entry(channel).or_insert_with(Vec::new).push(now);
             Ok(())
         } else {
             // Calculate wait time
@@ -294,7 +290,8 @@ impl RateLimiter for CompositeLimiter {
     }
 
     fn remaining(&self, channel: Channel) -> u32 {
-        self.limiters.iter()
+        self.limiters
+            .iter()
             .map(|l| l.remaining(channel))
             .min()
             .unwrap_or(u32::MAX)

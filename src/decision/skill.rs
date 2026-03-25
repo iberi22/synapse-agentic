@@ -1,12 +1,12 @@
 //! Skills - Reusable AI capabilities.
 
-use async_trait::async_trait;
-use serde::{Serialize, Deserialize};
-use std::fmt::Debug;
 use anyhow::Result;
+use async_trait::async_trait;
+use serde::{Deserialize, Serialize};
+use std::fmt::Debug;
 
-use super::provider::LLMProvider;
 use super::context::DecisionContext;
+use super::provider::LLMProvider;
 
 /// Output from a skill execution.
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -122,10 +122,14 @@ impl Skill for PromptSkill {
         context: &DecisionContext,
         provider: &dyn LLMProvider,
     ) -> Result<SkillOutput> {
-        let prompt = self.prompt_template
+        let prompt = self
+            .prompt_template
             .replace("{domain}", &context.domain)
             .replace("{summary}", &context.summary)
-            .replace("{data}", &serde_json::to_string_pretty(&context.data).unwrap_or_default());
+            .replace(
+                "{data}",
+                &serde_json::to_string_pretty(&context.data).unwrap_or_default(),
+            );
 
         let response = provider.generate(&prompt).await?;
 

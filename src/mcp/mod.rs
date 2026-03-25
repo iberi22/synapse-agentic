@@ -8,14 +8,16 @@
 //! - [`ToolRegistry`] - Container for registering and managing tools
 //! - [`ToolContext`] - Context passed to tools during execution
 
-mod tool;
-mod resource;
+pub mod http_transport;
 mod prompt;
 mod registry;
+mod resource;
 mod server;
+mod tool;
 
-pub use tool::{Tool, ToolContext, ToolContextExt, BoxToolContext, EmptyContext};
+pub use http_transport::HttpTransport;
+pub use prompt::{GetPromptResult, Prompt, PromptArgument, PromptMessage, PromptMessageContent};
+pub use registry::{McpRegistry, ToolRegistry};
 pub use resource::Resource;
-pub use prompt::{Prompt, PromptArgument, GetPromptResult, PromptMessage, PromptMessageContent};
-pub use registry::{ToolRegistry, McpRegistry};
 pub use server::{McpServer, McpServerConfig};
+pub use tool::{BoxToolContext, EmptyContext, Tool, ToolContext, ToolContextExt};
