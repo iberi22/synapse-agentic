@@ -1,8 +1,8 @@
 //! Domain Layer: Channel entities and value objects.
 
+use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
-use chrono::{DateTime, Utc};
 
 /// Supported communication channels.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
@@ -141,7 +141,12 @@ impl EmbedContent {
     }
 
     /// Adds a field.
-    pub fn with_field(mut self, name: impl Into<String>, value: impl Into<String>, inline: bool) -> Self {
+    pub fn with_field(
+        mut self,
+        name: impl Into<String>,
+        value: impl Into<String>,
+        inline: bool,
+    ) -> Self {
         self.fields.push(EmbedField {
             name: name.into(),
             value: value.into(),
@@ -329,7 +334,11 @@ impl Attachment {
     }
 
     /// Creates a file attachment.
-    pub fn file(filename: impl Into<String>, content: Vec<u8>, mime_type: impl Into<String>) -> Self {
+    pub fn file(
+        filename: impl Into<String>,
+        content: Vec<u8>,
+        mime_type: impl Into<String>,
+    ) -> Self {
         let content_len = content.len();
         Self {
             attachment_type: AttachmentType::File,
@@ -343,7 +352,11 @@ impl Attachment {
     }
 
     /// Creates a code snippet attachment.
-    pub fn code(filename: impl Into<String>, code: impl Into<String>, language: Option<&str>) -> Self {
+    pub fn code(
+        filename: impl Into<String>,
+        code: impl Into<String>,
+        language: Option<&str>,
+    ) -> Self {
         let code_str = code.into();
         let code_bytes = code_str.into_bytes();
         let size = code_bytes.len();
@@ -415,7 +428,8 @@ impl ChannelConfig {
 
     /// Gets the effective rate limit.
     pub fn effective_rate_limit(&self) -> u32 {
-        self.rate_limit.unwrap_or_else(|| self.channel.default_rate_limit())
+        self.rate_limit
+            .unwrap_or_else(|| self.channel.default_rate_limit())
     }
 }
 
@@ -506,8 +520,7 @@ mod tests {
 
     #[test]
     fn test_thread_context() {
-        let ctx = ThreadContext::new(MessageId::new("parent123"), "thread456")
-            .with_broadcast(true);
+        let ctx = ThreadContext::new(MessageId::new("parent123"), "thread456").with_broadcast(true);
 
         assert!(ctx.broadcast);
         assert_eq!(ctx.thread_id, "thread456");

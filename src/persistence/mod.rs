@@ -52,8 +52,8 @@
 //! ```
 
 pub mod adapter;
-pub mod manager;
 pub mod config;
+pub mod manager;
 
 #[cfg(feature = "db-surreal")]
 pub mod surreal;
@@ -65,9 +65,12 @@ pub mod postgres;
 pub mod pgvector;
 
 // Re-exports
-pub use adapter::{DatabaseAdapter, TypedDatabaseOps, GraphAdapter, VectorAdapter, QueryResult, Entity, EntityId, Filter, Sort, Pagination};
-pub use manager::{DatabaseManager, DatabaseHealth};
-pub use config::{DatabaseConfig, PrimaryDbConfig, VectorDbConfig, PoolConfig};
+pub use adapter::{
+    DatabaseAdapter, Entity, EntityId, Filter, GraphAdapter, Pagination, QueryResult, Sort,
+    TypedDatabaseOps, VectorAdapter,
+};
+pub use config::{DatabaseConfig, PoolConfig, PrimaryDbConfig, VectorDbConfig};
+pub use manager::{DatabaseHealth, DatabaseManager};
 
 #[cfg(feature = "db-surreal")]
 pub use surreal::SurrealAdapter;

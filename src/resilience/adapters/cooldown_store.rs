@@ -1,13 +1,13 @@
 //! In-memory cooldown store implementation.
 
 use async_trait::async_trait;
-use std::collections::HashMap;
-use std::sync::RwLock;
 use rand::seq::IndexedRandom;
 use rand::Rng;
+use std::collections::HashMap;
+use std::sync::RwLock;
 
 use crate::resilience::domain::{
-    CooldownReason, FailoverError, FailoverStrategy, ProviderId, ProviderHealth,
+    CooldownReason, FailoverError, FailoverStrategy, ProviderHealth, ProviderId,
 };
 use crate::resilience::ports::ProviderRegistry;
 
@@ -15,6 +15,7 @@ use crate::resilience::ports::ProviderRegistry;
 ///
 /// Suitable for single-instance deployments. For distributed systems,
 /// consider implementing a SurrealDB or Redis-backed registry.
+#[derive(Debug)]
 pub struct InMemoryCooldownStore {
     providers: RwLock<HashMap<String, ProviderHealth>>,
     /// Index for round-robin selection
@@ -45,33 +46,39 @@ impl Default for InMemoryCooldownStore {
 impl ProviderRegistry for InMemoryCooldownStore {
     async fn register(&self, id: ProviderId) -> Result<(), FailoverError> {
         let key = Self::get_key(&id);
-        let mut providers = self.providers.write().map_err(|_| {
-            FailoverError::ConfigError("lock poisoned".into())
-        })?;
+        let mut providers = self
+            .providers
+            .write()
+            .map_err(|_| FailoverError::ConfigError("lock poisoned".into()))?;
 
-        providers.entry(key).or_insert_with(|| ProviderHealth::new(id));
+        providers
+            .entry(key)
+            .or_insert_with(|| ProviderHealth::new(id));
         Ok(())
     }
 
     async fn get_health(&self, id: &ProviderId) -> Result<ProviderHealth, FailoverError> {
         let key = Self::get_key(id);
-        let providers = self.providers.read().map_err(|_| {
-            FailoverError::ConfigError("lock poisoned".into())
-        })?;
+        let providers = self
+            .providers
+            .read()
+            .map_err(|_| FailoverError::ConfigError("lock poisoned".into()))?;
 
-        providers.get(&key).cloned().ok_or_else(|| {
-            FailoverError::ProviderError {
+        providers
+            .get(&key)
+            .cloned()
+            .ok_or_else(|| FailoverError::ProviderError {
                 provider: id.key(),
                 message: "not registered".into(),
-            }
-        })
+            })
     }
 
     async fn record_success(&self, id: &ProviderId) -> Result<(), FailoverError> {
         let key = Self::get_key(id);
-        let mut providers = self.providers.write().map_err(|_| {
-            FailoverError::ConfigError("lock poisoned".into())
-        })?;
+        let mut providers = self
+            .providers
+            .write()
+            .map_err(|_| FailoverError::ConfigError("lock poisoned".into()))?;
 
         if let Some(health) = providers.get_mut(&key) {
             health.record_success();
@@ -85,9 +92,10 @@ impl ProviderRegistry for InMemoryCooldownStore {
         reason: CooldownReason,
     ) -> Result<(), FailoverError> {
         let key = Self::get_key(id);
-        let mut providers = self.providers.write().map_err(|_| {
-            FailoverError::ConfigError("lock poisoned".into())
-        })?;
+        let mut providers = self
+            .providers
+            .write()
+            .map_err(|_| FailoverError::ConfigError("lock poisoned".into()))?;
 
         if let Some(health) = providers.get_mut(&key) {
             health.record_failure(reason);
@@ -96,9 +104,10 @@ impl ProviderRegistry for InMemoryCooldownStore {
     }
 
     async fn list_available(&self) -> Result<Vec<ProviderHealth>, FailoverError> {
-        let providers = self.providers.read().map_err(|_| {
-            FailoverError::ConfigError("lock poisoned".into())
-        })?;
+        let providers = self
+            .providers
+            .read()
+            .map_err(|_| FailoverError::ConfigError("lock poisoned".into()))?;
 
         Ok(providers
             .values()
@@ -108,18 +117,20 @@ impl ProviderRegistry for InMemoryCooldownStore {
     }
 
     async fn list_all(&self) -> Result<Vec<ProviderHealth>, FailoverError> {
-        let providers = self.providers.read().map_err(|_| {
-            FailoverError::ConfigError("lock poisoned".into())
-        })?;
+        let providers = self
+            .providers
+            .read()
+            .map_err(|_| FailoverError::ConfigError("lock poisoned".into()))?;
 
         Ok(providers.values().cloned().collect())
     }
 
     async fn clear_cooldown(&self, id: &ProviderId) -> Result<(), FailoverError> {
         let key = Self::get_key(id);
-        let mut providers = self.providers.write().map_err(|_| {
-            FailoverError::ConfigError("lock poisoned".into())
-        })?;
+        let mut providers = self
+            .providers
+            .write()
+            .map_err(|_| FailoverError::ConfigError("lock poisoned".into()))?;
 
         if let Some(health) = providers.get_mut(&key) {
             health.cooldown = None;
@@ -132,9 +143,10 @@ impl ProviderRegistry for InMemoryCooldownStore {
         strategy: FailoverStrategy,
         exclude: &[ProviderId],
     ) -> Result<ProviderId, FailoverError> {
-        let providers = self.providers.read().map_err(|_| {
-            FailoverError::ConfigError("lock poisoned".into())
-        })?;
+        let providers = self
+            .providers
+            .read()
+            .map_err(|_| FailoverError::ConfigError("lock poisoned".into()))?;
 
         let exclude_keys: Vec<String> = exclude.iter().map(Self::get_key).collect();
 
@@ -153,9 +165,7 @@ impl ProviderRegistry for InMemoryCooldownStore {
         }
 
         let selected = match strategy {
-            FailoverStrategy::Stochastic => {
-                self.select_stochastic(&available)?
-            }
+            FailoverStrategy::Stochastic => self.select_stochastic(&available)?,
             FailoverStrategy::Priority => {
                 // Priority: select highest score
                 available
@@ -164,9 +174,7 @@ impl ProviderRegistry for InMemoryCooldownStore {
                     .map(|h| h.id.clone())
                     .ok_or_else(|| FailoverError::NoProviders)?
             }
-            FailoverStrategy::RoundRobin => {
-                self.select_round_robin(&available)?
-            }
+            FailoverStrategy::RoundRobin => self.select_round_robin(&available)?,
         };
 
         Ok(selected)
@@ -212,9 +220,10 @@ impl InMemoryCooldownStore {
         &self,
         available: &[&ProviderHealth],
     ) -> Result<ProviderId, FailoverError> {
-        let mut index = self.round_robin_index.write().map_err(|_| {
-            FailoverError::ConfigError("lock poisoned".into())
-        })?;
+        let mut index = self
+            .round_robin_index
+            .write()
+            .map_err(|_| FailoverError::ConfigError("lock poisoned".into()))?;
 
         let selected_index = *index % available.len();
         *index = (*index + 1) % available.len();
@@ -249,7 +258,10 @@ mod tests {
         let id = ProviderId::new("anthropic", "claude-4");
 
         store.register(id.clone()).await.unwrap();
-        store.record_failure(&id, CooldownReason::RateLimit).await.unwrap();
+        store
+            .record_failure(&id, CooldownReason::RateLimit)
+            .await
+            .unwrap();
 
         let health = store.get_health(&id).await.unwrap();
         assert!(!health.is_available());
@@ -295,7 +307,10 @@ mod tests {
             let store = Arc::clone(&store);
             let id2_clone = id2.clone();
             handles.push(tokio::spawn(async move {
-                store.record_failure(&id2_clone, CooldownReason::Timeout).await.unwrap();
+                store
+                    .record_failure(&id2_clone, CooldownReason::Timeout)
+                    .await
+                    .unwrap();
             }));
         }
 
@@ -322,10 +337,22 @@ mod tests {
         store.register(id2.clone()).await.unwrap();
         store.register(id3.clone()).await.unwrap();
 
-        let s1 = store.select_next(FailoverStrategy::RoundRobin, &[]).await.unwrap();
-        let s2 = store.select_next(FailoverStrategy::RoundRobin, &[]).await.unwrap();
-        let s3 = store.select_next(FailoverStrategy::RoundRobin, &[]).await.unwrap();
-        let s4 = store.select_next(FailoverStrategy::RoundRobin, &[]).await.unwrap();
+        let s1 = store
+            .select_next(FailoverStrategy::RoundRobin, &[])
+            .await
+            .unwrap();
+        let s2 = store
+            .select_next(FailoverStrategy::RoundRobin, &[])
+            .await
+            .unwrap();
+        let s3 = store
+            .select_next(FailoverStrategy::RoundRobin, &[])
+            .await
+            .unwrap();
+        let s4 = store
+            .select_next(FailoverStrategy::RoundRobin, &[])
+            .await
+            .unwrap();
 
         assert_ne!(s1.key(), s2.key());
         assert_ne!(s2.key(), s3.key());

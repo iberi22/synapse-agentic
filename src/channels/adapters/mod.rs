@@ -1,11 +1,11 @@
 //! Adapters for channels module.
 
+mod manager;
+mod rate_limiter;
 mod slack;
 mod websocket;
-mod rate_limiter;
-mod manager;
 
+pub use manager::{ChannelManager, ContentRouter, MessageLogEntry, MessageRouter, RoutingStrategy};
+pub use rate_limiter::{CompositeLimiter, SlidingWindowLimiter, TokenBucketLimiter};
 pub use slack::{SlackAdapter, SlackFormatter};
 pub use websocket::{WebSocketAdapter, WebSocketFormatter};
-pub use rate_limiter::{TokenBucketLimiter, SlidingWindowLimiter, CompositeLimiter};
-pub use manager::{ChannelManager, RoutingStrategy, MessageLogEntry, MessageRouter, ContentRouter};

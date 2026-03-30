@@ -1,12 +1,10 @@
 //! PostgreSQL Adapter - Traditional SQL database support.
 
-use async_trait::async_trait;
 use anyhow::Result;
+use async_trait::async_trait;
 use tracing::{debug, info};
 
-use super::adapter::{
-    DatabaseAdapter, EntityId, Filter, Pagination, QueryResult, Sort,
-};
+use super::adapter::{DatabaseAdapter, EntityId, Filter, Pagination, QueryResult, Sort};
 use super::config::PoolConfig;
 
 /// PostgreSQL adapter (stub - requires sqlx dependency).
@@ -30,7 +28,9 @@ impl PostgresAdapter {
 
 #[async_trait]
 impl DatabaseAdapter for PostgresAdapter {
-    fn name(&self) -> &str { "postgres" }
+    fn name(&self) -> &str {
+        "postgres"
+    }
 
     async fn health_check(&self) -> Result<bool> {
         debug!("PostgreSQL health check (stub)");
@@ -42,7 +42,11 @@ impl DatabaseAdapter for PostgresAdapter {
         Ok(EntityId::new(uuid::Uuid::new_v4().to_string()))
     }
 
-    async fn create_many_raw(&self, table: &str, entities: Vec<serde_json::Value>) -> Result<Vec<EntityId>> {
+    async fn create_many_raw(
+        &self,
+        table: &str,
+        entities: Vec<serde_json::Value>,
+    ) -> Result<Vec<EntityId>> {
         let mut ids = Vec::new();
         for entity in entities {
             ids.push(self.create_raw(table, entity).await?);
@@ -54,15 +58,29 @@ impl DatabaseAdapter for PostgresAdapter {
         Ok(None)
     }
 
-    async fn get_many_raw(&self, _table: &str, _ids: &[EntityId]) -> Result<Vec<serde_json::Value>> {
+    async fn get_many_raw(
+        &self,
+        _table: &str,
+        _ids: &[EntityId],
+    ) -> Result<Vec<serde_json::Value>> {
         Ok(vec![])
     }
 
-    async fn update_raw(&self, _table: &str, _id: &EntityId, _entity: serde_json::Value) -> Result<()> {
+    async fn update_raw(
+        &self,
+        _table: &str,
+        _id: &EntityId,
+        _entity: serde_json::Value,
+    ) -> Result<()> {
         Ok(())
     }
 
-    async fn patch_raw(&self, _table: &str, _id: &EntityId, _patch: serde_json::Value) -> Result<()> {
+    async fn patch_raw(
+        &self,
+        _table: &str,
+        _id: &EntityId,
+        _patch: serde_json::Value,
+    ) -> Result<()> {
         Ok(())
     }
 
@@ -88,7 +106,11 @@ impl DatabaseAdapter for PostgresAdapter {
         Ok(false)
     }
 
-    async fn raw_query(&self, _query: &str, _params: serde_json::Value) -> Result<serde_json::Value> {
+    async fn raw_query(
+        &self,
+        _query: &str,
+        _params: serde_json::Value,
+    ) -> Result<serde_json::Value> {
         Ok(serde_json::Value::Null)
     }
 }

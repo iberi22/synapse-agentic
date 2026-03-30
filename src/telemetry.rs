@@ -2,8 +2,8 @@
 //!
 //! Provides structured logging and OpenTelemetry integration.
 
-use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt, EnvFilter};
 use anyhow::Result;
+use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt, EnvFilter};
 
 /// Initializes the telemetry system.
 ///

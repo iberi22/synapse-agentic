@@ -9,6 +9,7 @@ use crate::compaction::ports::{CompactionError, SummarizationPrompts, Summarizat
 use crate::decision::LLMProvider;
 
 /// Summarization strategy that uses an LLM to generate summaries.
+#[derive(Debug)]
 pub struct LLMSummarizer {
     /// The LLM provider to use for summarization
     provider: Arc<dyn LLMProvider>,
@@ -76,13 +77,10 @@ impl SummarizationStrategy for LLMSummarizer {
             "Summarizing message chunk"
         );
 
-        let summary_text = self.provider
-            .generate(&prompt)
-            .await
-            .map_err(|e| {
-                warn!(error = %e, "LLM summarization failed");
-                CompactionError::SummarizationFailed(e.to_string())
-            })?;
+        let summary_text = self.provider.generate(&prompt).await.map_err(|e| {
+            warn!(error = %e, "LLM summarization failed");
+            CompactionError::SummarizationFailed(e.to_string())
+        })?;
 
         let replaced_ids = chunk.message_ids();
         let summary = Message::summary(summary_text, replaced_ids);

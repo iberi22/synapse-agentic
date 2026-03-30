@@ -1,11 +1,11 @@
 //! Hive - Agent supervisor and lifecycle manager.
 
-use tokio::task::JoinSet;
-use tokio::sync::mpsc;
-use std::sync::Arc;
-use std::sync::atomic::{AtomicBool, Ordering};
 use anyhow::Result;
-use tracing::{info, error};
+use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::Arc;
+use tokio::sync::mpsc;
+use tokio::task::JoinSet;
+use tracing::{error, info};
 
 use super::agent::{Agent, AgentHandle};
 
@@ -95,6 +95,22 @@ impl Hive {
         A: Agent + Send + Sync + 'static,
         A::Input: Send + Sync + 'static + std::fmt::Debug,
     {
+        self.spawn_with_capacity(agent, 100)
+    }
+
+    /// Spawns an agent into the Hive and restores its state from a snapshot.
+    pub fn spawn_with_state<A>(
+        &mut self,
+        mut agent: A,
+        state: serde_json::Value,
+    ) -> AgentHandle<A::Input>
+    where
+        A: Agent + Send + Sync + 'static,
+        A::Input: Send + Sync + 'static + std::fmt::Debug,
+    {
+        if let Err(e) = agent.restore(&state) {
+            error!(agent = %agent.name(), error = %e, "Failed to restore agent state");
+        }
         self.spawn_with_capacity(agent, 100)
     }
 

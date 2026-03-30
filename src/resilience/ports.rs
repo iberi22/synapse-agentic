@@ -5,9 +5,7 @@
 use async_trait::async_trait;
 use std::sync::Arc;
 
-use super::domain::{
-    ProviderId, ProviderHealth, CooldownReason, FailoverStrategy, FailoverError,
-};
+use super::domain::{CooldownReason, FailoverError, FailoverStrategy, ProviderHealth, ProviderId};
 use crate::decision::LLMProvider;
 
 /// Port for managing provider health and cooldown states.
@@ -15,7 +13,7 @@ use crate::decision::LLMProvider;
 /// Implement this trait to provide different storage backends
 /// (in-memory, SurrealDB, Redis, etc.).
 #[async_trait]
-pub trait ProviderRegistry: Send + Sync {
+pub trait ProviderRegistry: std::fmt::Debug + Send + Sync {
     /// Registers a new provider in the registry.
     async fn register(&self, id: ProviderId) -> Result<(), FailoverError>;
 

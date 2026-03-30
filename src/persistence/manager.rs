@@ -1,7 +1,7 @@
 //! Database Manager - Unified access to all database backends.
 
+use anyhow::{bail, Result};
 use std::sync::Arc;
-use anyhow::{Result, bail};
 use tracing::info;
 
 use super::adapter::{DatabaseAdapter, GraphAdapter, VectorAdapter};
@@ -23,86 +23,99 @@ impl DatabaseManager {
         let (primary, graph, surreal_as_vector): (
             Arc<dyn DatabaseAdapter>,
             Option<Arc<dyn GraphAdapter>>,
-            Option<Arc<dyn VectorAdapter>>
+            Option<Arc<dyn VectorAdapter>>,
         ) = match &config.primary {
-                PrimaryDbConfig::SurrealMemory => {
-                    #[cfg(feature = "db-surreal")]
-                    {
-                        let adapter = super::surreal::SurrealAdapter::memory().await?;
-                        let arc = Arc::new(adapter);
-                        // Explicitly cast/coerce to trait objects
-                        (
-                            arc.clone() as Arc<dyn DatabaseAdapter>,
-                            Some(arc.clone() as Arc<dyn GraphAdapter>),
-                            Some(arc as Arc<dyn VectorAdapter>)
-                        )
-                    }
-                    #[cfg(not(feature = "db-surreal"))]
+            PrimaryDbConfig::SurrealMemory => {
+                #[cfg(feature = "db-surreal")]
+                {
+                    let adapter = super::surreal::SurrealAdapter::memory().await?;
+                    let arc = Arc::new(adapter);
+                    // Explicitly cast/coerce to trait objects
+                    (
+                        arc.clone() as Arc<dyn DatabaseAdapter>,
+                        Some(arc.clone() as Arc<dyn GraphAdapter>),
+                        Some(arc as Arc<dyn VectorAdapter>),
+                    )
+                }
+                #[cfg(not(feature = "db-surreal"))]
+                bail!("SurrealDB support not enabled. Add 'db-surreal' feature.")
+            }
+            PrimaryDbConfig::SurrealFile { path } => {
+                #[cfg(feature = "db-surreal")]
+                {
+                    let adapter = super::surreal::SurrealAdapter::file(path).await?;
+                    let arc = Arc::new(adapter);
+                    (
+                        arc.clone() as Arc<dyn DatabaseAdapter>,
+                        Some(arc.clone() as Arc<dyn GraphAdapter>),
+                        Some(arc as Arc<dyn VectorAdapter>),
+                    )
+                }
+                #[cfg(not(feature = "db-surreal"))]
+                {
+                    let _ = path;
                     bail!("SurrealDB support not enabled. Add 'db-surreal' feature.")
                 }
-                PrimaryDbConfig::SurrealFile { path } => {
-                    #[cfg(feature = "db-surreal")]
-                    {
-                        let adapter = super::surreal::SurrealAdapter::file(path).await?;
-                        let arc = Arc::new(adapter);
-                        (
-                            arc.clone() as Arc<dyn DatabaseAdapter>,
-                            Some(arc.clone() as Arc<dyn GraphAdapter>),
-                            Some(arc as Arc<dyn VectorAdapter>)
-                        )
-                    }
-                    #[cfg(not(feature = "db-surreal"))]
-                    {
-                        let _ = path;
-                        bail!("SurrealDB support not enabled. Add 'db-surreal' feature.")
-                    }
+            }
+            PrimaryDbConfig::SurrealRemote {
+                url,
+                namespace,
+                database,
+                username,
+                password,
+            } => {
+                #[cfg(feature = "db-surreal")]
+                {
+                    let adapter = super::surreal::SurrealAdapter::remote(
+                        url,
+                        namespace,
+                        database,
+                        username.as_deref(),
+                        password.as_deref(),
+                    )
+                    .await?;
+                    let arc = Arc::new(adapter);
+                    (
+                        arc.clone() as Arc<dyn DatabaseAdapter>,
+                        Some(arc.clone() as Arc<dyn GraphAdapter>),
+                        Some(arc as Arc<dyn VectorAdapter>),
+                    )
                 }
-                PrimaryDbConfig::SurrealRemote { url, namespace, database, username, password } => {
-                    #[cfg(feature = "db-surreal")]
-                    {
-                        let adapter = super::surreal::SurrealAdapter::remote(
-                            url,
-                            namespace,
-                            database,
-                            username.as_deref(),
-                            password.as_deref(),
-                        ).await?;
-                        let arc = Arc::new(adapter);
-                        (
-                            arc.clone() as Arc<dyn DatabaseAdapter>,
-                            Some(arc.clone() as Arc<dyn GraphAdapter>),
-                            Some(arc as Arc<dyn VectorAdapter>)
-                        )
-                    }
-                    #[cfg(not(feature = "db-surreal"))]
-                    {
-                        let _ = (url, namespace, database, username, password);
-                        bail!("SurrealDB support not enabled. Add 'db-surreal' feature.")
-                    }
+                #[cfg(not(feature = "db-surreal"))]
+                {
+                    let _ = (url, namespace, database, username, password);
+                    bail!("SurrealDB support not enabled. Add 'db-surreal' feature.")
                 }
-                PrimaryDbConfig::Postgres { url, ssl_mode: _ } => {
-                    #[cfg(feature = "db-postgres")]
-                    {
-                        let adapter = super::postgres::PostgresAdapter::connect(url, &config.pool).await?;
-                        (Arc::new(adapter) as Arc<dyn DatabaseAdapter>, None, None)
-                    }
-                    #[cfg(not(feature = "db-postgres"))]
-                    {
-                        let _ = url;
-                        bail!("PostgreSQL support not enabled. Add 'db-postgres' feature.")
-                    }
+            }
+            PrimaryDbConfig::Postgres { url, ssl_mode: _ } => {
+                #[cfg(feature = "db-postgres")]
+                {
+                    let adapter =
+                        super::postgres::PostgresAdapter::connect(url, &config.pool).await?;
+                    (Arc::new(adapter) as Arc<dyn DatabaseAdapter>, None, None)
                 }
-            };
+                #[cfg(not(feature = "db-postgres"))]
+                {
+                    let _ = url;
+                    bail!("PostgreSQL support not enabled. Add 'db-postgres' feature.")
+                }
+            }
+        };
 
         let vector: Option<Arc<dyn VectorAdapter>> = match &config.vector {
             Some(VectorDbConfig::SurrealNative) => {
                 // Already captured above if using SurrealDB
                 surreal_as_vector
             }
-            Some(VectorDbConfig::PgVector { url, dimensions, index_type: _ }) => {
+            Some(VectorDbConfig::PgVector {
+                url,
+                dimensions,
+                index_type: _,
+            }) => {
                 #[cfg(feature = "db-pgvector")]
                 {
-                    let adapter = super::pgvector::PgVectorAdapter::connect(url, *dimensions).await?;
+                    let adapter =
+                        super::pgvector::PgVectorAdapter::connect(url, *dimensions).await?;
                     Some(Arc::new(adapter))
                 }
                 #[cfg(not(feature = "db-pgvector"))]
@@ -124,7 +137,12 @@ impl DatabaseManager {
             "Database manager initialized"
         );
 
-        Ok(Self { primary, graph, vector, config })
+        Ok(Self {
+            primary,
+            graph,
+            vector,
+            config,
+        })
     }
 
     /// Returns the primary database adapter.

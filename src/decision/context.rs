@@ -1,6 +1,6 @@
 //! Decision context for LLM queries.
 
-use serde::{Serialize, Deserialize};
+use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
 /// Context for decision-making requests.
@@ -77,8 +77,12 @@ impl DecisionContext {
     }
 
     /// Adds multiple constraints.
-    pub fn with_constraints(mut self, constraints: impl IntoIterator<Item = impl Into<String>>) -> Self {
-        self.constraints.extend(constraints.into_iter().map(Into::into));
+    pub fn with_constraints(
+        mut self,
+        constraints: impl IntoIterator<Item = impl Into<String>>,
+    ) -> Self {
+        self.constraints
+            .extend(constraints.into_iter().map(Into::into));
         self
     }
 

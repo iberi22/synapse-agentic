@@ -181,12 +181,17 @@ impl DatabaseConfig {
     }
 
     /// Adds credentials for SurrealDB remote.
-    pub fn with_credentials(mut self, username: impl Into<String>, password: impl Into<String>) -> Self {
+    pub fn with_credentials(
+        mut self,
+        username: impl Into<String>,
+        password: impl Into<String>,
+    ) -> Self {
         if let PrimaryDbConfig::SurrealRemote {
             username: ref mut u,
             password: ref mut p,
             ..
-        } = self.primary {
+        } = self.primary
+        {
             *u = Some(username.into());
             *p = Some(password.into());
         }

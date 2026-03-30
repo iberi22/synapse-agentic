@@ -64,19 +64,13 @@ impl ChannelManager {
     }
 
     /// Sets a global rate limiter.
-    pub fn with_rate_limiter<R: RateLimiter + Send + Sync + 'static>(
-        mut self,
-        limiter: R,
-    ) -> Self {
+    pub fn with_rate_limiter<R: RateLimiter + Send + Sync + 'static>(mut self, limiter: R) -> Self {
         self.rate_limiter = Some(Arc::new(limiter));
         self
     }
 
     /// Registers a channel adapter.
-    pub async fn register<A: ChannelAdapter + Send + Sync + 'static>(
-        &self,
-        adapter: A,
-    ) {
+    pub async fn register<A: ChannelAdapter + Send + Sync + 'static>(&self, adapter: A) {
         let channel = adapter.channel();
         let mut adapters = self.adapters.write().await;
         adapters.insert(channel, Arc::new(RwLock::new(adapter)));
@@ -147,7 +141,8 @@ impl ChannelManager {
         }
 
         let adapters = self.adapters.read().await;
-        let adapter = adapters.get(&channel)
+        let adapter = adapters
+            .get(&channel)
             .ok_or(ChannelError::NotFound(format!("{:?}", channel)))?;
 
         let adapter_guard = adapter.read().await;
@@ -160,7 +155,10 @@ impl ChannelManager {
     }
 
     /// Sends a message using the configured routing strategy.
-    pub async fn send(&self, message: ChannelMessage) -> Vec<(Channel, Result<SendResult, ChannelError>)> {
+    pub async fn send(
+        &self,
+        message: ChannelMessage,
+    ) -> Vec<(Channel, Result<SendResult, ChannelError>)> {
         let channels = self.resolve_channels(&message).await;
         let mut results = Vec::new();
 
@@ -173,7 +171,10 @@ impl ChannelManager {
     }
 
     /// Broadcasts a message to all connected channels.
-    pub async fn broadcast(&self, message: ChannelMessage) -> Vec<(Channel, Result<SendResult, ChannelError>)> {
+    pub async fn broadcast(
+        &self,
+        message: ChannelMessage,
+    ) -> Vec<(Channel, Result<SendResult, ChannelError>)> {
         let adapters = self.adapters.read().await;
         let mut results = Vec::new();
 
@@ -198,7 +199,8 @@ impl ChannelManager {
         limit: usize,
     ) -> Result<ReceiveResult, ChannelError> {
         let adapters = self.adapters.read().await;
-        let adapter = adapters.get(&channel)
+        let adapter = adapters
+            .get(&channel)
             .ok_or(ChannelError::NotFound(format!("{:?}", channel)))?;
 
         let adapter_guard = adapter.read().await;
@@ -206,7 +208,10 @@ impl ChannelManager {
     }
 
     /// Receives messages from all connected channels.
-    pub async fn receive_all(&self, limit: usize) -> HashMap<Channel, Result<ReceiveResult, ChannelError>> {
+    pub async fn receive_all(
+        &self,
+        limit: usize,
+    ) -> HashMap<Channel, Result<ReceiveResult, ChannelError>> {
         let adapters = self.adapters.read().await;
         let mut results = HashMap::new();
 
@@ -323,13 +328,15 @@ impl MessageRouter for ContentRouter {
     async fn route(&self, message: &ChannelMessage) -> Vec<Channel> {
         self.rules
             .iter()
-            .filter_map(|(pred, channel)| {
-                if pred(message) {
-                    Some(*channel)
-                } else {
-                    None
-                }
-            })
+            .filter_map(
+                |(pred, channel)| {
+                    if pred(message) {
+                        Some(*channel)
+                    } else {
+                        None
+                    }
+                },
+            )
             .collect()
     }
 }
@@ -388,8 +395,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_routing_strategy_broadcast() {
-        let manager = ChannelManager::new()
-            .with_strategy(RoutingStrategy::Broadcast);
+        let manager = ChannelManager::new().with_strategy(RoutingStrategy::Broadcast);
 
         let adapter1 = WebSocketAdapter::new("wss://test1.com");
         let adapter2 = WebSocketAdapter::new("wss://test2.com");

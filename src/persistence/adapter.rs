@@ -4,9 +4,9 @@
 //! - `DatabaseAdapter` (dyn-compatible) - for runtime polymorphism
 //! - `TypedDatabaseOps` (extension trait) - for type-safe operations
 
+use anyhow::Result;
 use async_trait::async_trait;
 use serde::{de::DeserializeOwned, Serialize};
-use anyhow::Result;
 use std::fmt::Debug;
 
 /// Unique identifier for entities across all database backends.
@@ -197,12 +197,18 @@ pub struct Sort {
 impl Sort {
     /// Creates an ascending sort.
     pub fn asc(field: impl Into<String>) -> Self {
-        Self { field: field.into(), descending: false }
+        Self {
+            field: field.into(),
+            descending: false,
+        }
     }
 
     /// Creates a descending sort.
     pub fn desc(field: impl Into<String>) -> Self {
-        Self { field: field.into(), descending: true }
+        Self {
+            field: field.into(),
+            descending: true,
+        }
     }
 }
 
@@ -222,7 +228,11 @@ pub trait DatabaseAdapter: Send + Sync {
     async fn create_raw(&self, table: &str, entity: serde_json::Value) -> Result<EntityId>;
 
     /// Creates multiple entities in a single operation.
-    async fn create_many_raw(&self, table: &str, entities: Vec<serde_json::Value>) -> Result<Vec<EntityId>>;
+    async fn create_many_raw(
+        &self,
+        table: &str,
+        entities: Vec<serde_json::Value>,
+    ) -> Result<Vec<EntityId>>;
 
     /// Retrieves an entity by its ID.
     async fn get_raw(&self, table: &str, id: &EntityId) -> Result<Option<serde_json::Value>>;
@@ -231,7 +241,8 @@ pub trait DatabaseAdapter: Send + Sync {
     async fn get_many_raw(&self, table: &str, ids: &[EntityId]) -> Result<Vec<serde_json::Value>>;
 
     /// Updates an existing entity.
-    async fn update_raw(&self, table: &str, id: &EntityId, entity: serde_json::Value) -> Result<()>;
+    async fn update_raw(&self, table: &str, id: &EntityId, entity: serde_json::Value)
+        -> Result<()>;
 
     /// Partially updates an entity with only the provided fields.
     async fn patch_raw(&self, table: &str, id: &EntityId, patch: serde_json::Value) -> Result<()>;
@@ -313,7 +324,9 @@ pub trait TypedDatabaseOps: DatabaseAdapter {
         sort: Option<Vec<Sort>>,
         pagination: Option<Pagination>,
     ) -> Result<Vec<E>> {
-        let result = self.query_raw(E::table_name(), filter, sort, pagination).await?;
+        let result = self
+            .query_raw(E::table_name(), filter, sort, pagination)
+            .await?;
         result.into_typed()
     }
 

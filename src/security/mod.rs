@@ -38,12 +38,12 @@ pub mod ports;
 pub mod adapters;
 
 // Re-exports
+pub use adapters::{RegexPIIRedactor, StructuredJSONValidator};
 pub use domain::{
-    PIIType, RedactionConfig, RedactionResult, ValidationResult,
-    ValidationError, SensitivityLevel, Redaction,
+    PIIType, Redaction, RedactionConfig, RedactionResult, SensitivityLevel, ValidationError,
+    ValidationResult,
 };
 pub use ports::{
-    PIIRedactor, OutputValidator, JSONValidator, ToolResultGuard,
-    ToolResult, ContentType, GuardedResult, Modification,
+    ContentType, GuardedResult, JSONValidator, Modification, OutputValidator, PIIRedactor,
+    ToolResult, ToolResultGuard,
 };
-pub use adapters::{RegexPIIRedactor, StructuredJSONValidator};

@@ -1,5 +1,5 @@
-use synapse_agentic::prelude::*;
 use std::time::Duration;
+use synapse_agentic::prelude::*;
 
 #[derive(Debug)]
 enum Ping {

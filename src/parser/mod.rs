@@ -40,18 +40,17 @@
 //! assert_eq!(parsed.content, r#"{"status": "ok"}"#);
 //! ```
 
+pub mod adapters;
 pub mod domain;
 pub mod ports;
-pub mod adapters;
 
 // Domain exports
 pub use domain::{
-    LLMOutput, ParsedOutput, RepairAction, RepairSeverity,
-    SanitizationRule, OutputFormat,
+    LLMOutput, OutputFormat, ParsedOutput, RepairAction, RepairSeverity, SanitizationRule,
 };
 
 // Port exports
 pub use ports::{OutputParser, OutputSanitizer, SelfHealer};
 
 // Adapter exports
-pub use adapters::{JsonExtractor, MarkdownCleaner, HeuristicRepair, SelfHealingPipeline};
+pub use adapters::{HeuristicRepair, JsonExtractor, MarkdownCleaner, SelfHealingPipeline};

@@ -1,6 +1,6 @@
 //! Heuristic-based repairs for common LLM output issues.
 
-use crate::parser::domain::{RepairAction, RepairType, RepairSeverity};
+use crate::parser::domain::{RepairAction, RepairSeverity, RepairType};
 use regex::Regex;
 
 /// Applies heuristic repairs to fix common LLM output issues.
